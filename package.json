@@ -11,7 +11,8 @@
     "dev:landing": "npm run dev -w apps/landing",
     "dev:viewer": "npm run dev -w apps/viewer",
     "dev:relay": "npm run dev -w apps/relay",
-    "lint": "node scripts/check-comments.mjs"
+    "lint": "node scripts/check-comments.mjs",
+    "test": "npm run test --workspaces --if-present"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

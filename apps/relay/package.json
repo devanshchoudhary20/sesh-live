@@ -6,11 +6,14 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:init": "wrangler d1 execute sesh-signups --local --file=schema.sql",
+    "test": "vitest run"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
     "wrangler": "^4.138.0",
-    "@cloudflare/workers-types": "^4.20250925.0"
+    "@cloudflare/workers-types": "^4.20250925.0",
+    "vitest": "^5.0.1"
   }
 }

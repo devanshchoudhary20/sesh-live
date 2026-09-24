@@ -21,10 +21,11 @@ function viewerCountCopy(state: string, count: number | null) {
 
 function App() {
   const { theme, toggle } = useTheme()
-  const { relay, room, name, valid } = useSessionLink()
+  const { roomId, name, valid } = useSessionLink()
   const terminalRef = useRef<TerminalHandle>(null)
-  const handleFrame = useCallback((data: string) => terminalRef.current?.write(data), [])
-  const { state, viewerCount } = useRoomSocket(valid ? relay : null, valid ? room : null, handleFrame)
+  const handleFrame = useCallback((data: Uint8Array) => terminalRef.current?.write(data), [])
+  const handleResize = useCallback((cols: number, rows: number) => terminalRef.current?.resize(cols, rows), [])
+  const { state, viewerCount } = useRoomSocket(valid ? roomId : null, handleFrame, handleResize)
 
   if (!valid || state === "invalid") {
     return (

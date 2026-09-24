@@ -1,14 +1,7 @@
-function parseParams(source: string): URLSearchParams {
-  return new URLSearchParams(source.replace(/^[?#]/, ""))
-}
-
+// Link format: https://<viewer-origin>/#<roomId>, the same shape the host CLI prints on start.
 export function useSessionLink() {
-  const fromQuery = parseParams(window.location.search)
-  const fromFragment = parseParams(window.location.hash)
+  const roomId = window.location.hash.replace(/^#/, "") || null
+  const name = new URLSearchParams(window.location.search).get("name") ?? "Session"
 
-  const relay = fromQuery.get("relay") ?? fromFragment.get("relay")
-  const room = fromQuery.get("room") ?? fromFragment.get("room")
-  const name = fromQuery.get("name") ?? fromFragment.get("name") ?? "Session"
-
-  return { relay, room, name, valid: Boolean(relay && room) }
+  return { roomId, name, valid: Boolean(roomId) }
 }

@@ -136,3 +136,34 @@ Both screens read `prefers-color-scheme` on load and expose a manual toggle (but
 ## Analytics
 
 None beyond the two counters already specified (landing signup count, viewer distinct-viewer count), both read from the relay/D1, not from any third-party script, per the plan's no-third-party-script rule.
+
+## Figma
+
+File: **sesh — M0 probe** — https://www.figma.com/design/T4RCavDVoA4KwCVBzDKX7R/sesh---M0-probe
+
+Page `Screens` (`0:1`):
+
+| # | Frame | Node id | Size |
+|---|---|---|---|
+| 1 | `Landing / Light / Success` | `3:2` | 1440×900 |
+| 2 | `Landing / Dark / Success` | `3:37` | 1440×900 |
+| 3 | `Landing / Light / Empty` | `3:72` | 1440×900 |
+| 4 | `Viewer / Dark / Live` | `4:2` | 1280×800 |
+| 5 | `Viewer / Light / Live` | `4:44` | 1280×800 |
+| 6 | `Viewer / Dark / Ended` | `4:86` | 1280×800 |
+| 7 | `Landing / Light / Mobile` | `5:2` | 390×844 |
+
+Page `Tokens` (`2:4`): `sesh tokens` sheet — `6:2`. Variable collections: `sesh/color-light`, `sesh/color-dark` (two collections rather than one with Light/Dark modes: the Figma Starter plan caps a collection at one mode), `sesh/scale` (space-1…8, radius-sm/md, type sizes).
+
+Typefaces: IBM Plex Sans and IBM Plex Mono, both available in Figma, no substitution.
+
+Deviations from the spec above, all for mockup framing only:
+- Recording placeholder drawn at 576×324 (desktop) and 350×197 (mobile) rather than 960×540, so the whole page fits a 1440×900 / 390×844 viewport. Aspect ratio stays 16:9.
+- Empty-state counter reads `Be the first to sign up` (the spec's resolved-zero copy) rather than a literal `0`.
+- Terminal transcript uses the bright ANSI variants on the dark frames and the base variants on the light frame; both sets come from the documented xterm.js 16-colour palette.
+
+Open visual fixes (the Figma MCP tool-call quota on the Starter plan ran out mid-pass; the fix script is one `use_figma` call and is written down here so the next session can run it):
+1. `Friend sentence` / `Subhead` / `No live session copy` / `Ended copy` text nodes sit at a fixed 10px height and clip to one line. Cause: `resize()` on a TEXT node resets `textAutoResize` to `NONE`, and the build script set `HEIGHT` before the resize. Fix: set `textAutoResize = 'HEIGHT'` on those nodes (width is already fixed).
+2. `Button / Success`, `Button / Get the link` and `CTA / Get the link` were built with `resize(1, h)`, so they are 1px wide on the primary axis and clip their label. Fix: `primaryAxisSizingMode = 'AUTO'`.
+3. Five transcript lines in the viewer terminals render invisible — every line built from a single coloured run (`⎿ Read 84 lines`, `⎿ 3 matches across 2 files`, the `and routing through safeNext()…` continuation, `⎿ Updated with 2 additions and 1 removal`, and the `▌` cursor). Multi-run lines are fine. Fix: set `node.fills` directly instead of a full-range `setRangeFills` with a variable-bound paint.
+4. The `Tokens` page intro paragraph has the same one-line clipping as (1).

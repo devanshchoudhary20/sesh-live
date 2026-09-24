@@ -1,13 +1,19 @@
 {
-  "name": "@sesh/host",
+  "name": "sesh",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "bin": {
-    "sesh-poc": "./index.js"
+    "sesh": "./index.js"
+  },
+  "scripts": {
+    "test": "vitest run"
   },
   "dependencies": {
     "node-pty": "^1.1.0",
     "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.1"
   }
 }

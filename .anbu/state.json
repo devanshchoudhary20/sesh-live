@@ -6,7 +6,7 @@
     "yolo": false,
     "cloud": false
   },
-  "phase": "design",
+  "phase": "build",
   "phases": {
     "think": {
       "status": "done",
@@ -14,12 +14,13 @@
       "done_at": "2026-09-25T01:03:25"
     },
     "design": {
-      "status": "in_progress",
+      "status": "done",
       "artifact": ".anbu/screens.md",
-      "done_at": null
+      "done_at": "2026-09-25T01:36:46",
+      "figma": "https://www.figma.com/design/T4RCavDVoA4KwCVBzDKX7R/sesh---M0-probe (3 render defects unfixed: Figma Starter MCP quota)"
     },
     "build": {
-      "status": "pending",
+      "status": "in_progress",
       "artifact": "git log",
       "done_at": null,
       "chunks": []
@@ -74,6 +75,10 @@
       "citations": "verified; one quote not found in #28791",
       "revised": "2026-09-25T01:03:25",
       "rubric_b": 7
+    },
+    "design": {
+      "verdict": "WAIVED",
+      "reason": "Figma MCP quota exhausted on the Starter plan; M0 is a throwaway probe. The PM reviews the live landing page in Chrome in both themes at gate 3 instead of mockups."
     }
   },
   "milestone": {

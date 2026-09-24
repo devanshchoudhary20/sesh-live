@@ -1,52 +1,123 @@
-// One Durable Object per room. Fans out host frames to N viewers, no storage.
-export class Room {
-  state: DurableObjectState;
-  host: WebSocket | null = null;
-  viewers = new Set<WebSocket>();
-  seenViewerIds = new Set<string>();
+import type { Env } from "./env";
+import { appendToRingBuffer, base64ToBuffer, bufferToBase64, resolveRole, type FrameEntry } from "./routing";
 
-  constructor(state: DurableObjectState) {
+const BACKFILL_LIMIT_BYTES = 64 * 1024;
+const BACKFILL_KEY = "backfill";
+const HOST_TOKEN_KEY = "hostToken";
+const VIEWER_KEY_PREFIX = "viewer:";
+
+// One Durable Object per room, on the hibernation API so an idle room costs nothing between frames.
+export class Room implements DurableObject {
+  state: DurableObjectState;
+  env: Env;
+
+  constructor(state: DurableObjectState, env: Env) {
     this.state = state;
+    this.env = env;
   }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname.endsWith("/stats")) return this.handleStats();
+
     if (request.headers.get("Upgrade") !== "websocket") {
-      if (url.pathname.endsWith("/viewers")) {
-        return Response.json({ distinctViewers: this.seenViewerIds.size });
-      }
       return new Response("expected websocket", { status: 426 });
     }
 
-    const role = url.searchParams.get("role") === "host" ? "host" : "viewer";
-    const viewerId = url.searchParams.get("viewerId") ?? crypto.randomUUID();
+    const role = resolveRole(url);
+    return role === "host" ? this.acceptHost(url) : this.acceptViewer(url);
+  }
+
+  private async acceptHost(url: URL): Promise<Response> {
+    const token = url.searchParams.get("token");
+    if (!token) return new Response("missing host token", { status: 400 });
+
+    const storedToken = await this.state.storage.get<string>(HOST_TOKEN_KEY);
+    if (storedToken && storedToken !== token) {
+      return new Response("host token does not match this room", { status: 403 });
+    }
+    if (!storedToken) await this.state.storage.put(HOST_TOKEN_KEY, token);
 
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
-    server.accept();
-
-    if (role === "host") {
-      this.host = server;
-      server.addEventListener("message", (event) => this.broadcast(event.data));
-      server.addEventListener("close", () => {
-        this.host = null;
-      });
-    } else {
-      this.viewers.add(server);
-      this.seenViewerIds.add(viewerId);
-      server.addEventListener("close", () => this.viewers.delete(server));
-    }
-
+    this.state.acceptWebSocket(server, ["host"]);
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  broadcast(data: string | ArrayBuffer) {
-    for (const viewer of this.viewers) {
+  private async acceptViewer(url: URL): Promise<Response> {
+    const viewerToken = url.searchParams.get("v") || crypto.randomUUID();
+
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
+    this.state.acceptWebSocket(server, ["viewer"]);
+
+    await this.recordViewer(viewerToken);
+    await this.sendBackfill(server);
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // Host frames fan out to every connected viewer; viewer messages are ignored (read-only at M0).
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    if (!this.state.getTags(ws).includes("host")) return;
+    await this.appendBackfill(message);
+    this.broadcast(message);
+  }
+
+  webSocketClose(ws: WebSocket, code: number, reason: string): void {
+    try {
+      ws.close(code, reason);
+    } catch {
+      // socket already closing; nothing to clean up beyond letting hibernation drop it
+    }
+  }
+
+  private broadcast(data: string | ArrayBuffer): void {
+    for (const viewer of this.state.getWebSockets("viewer")) {
       try {
         viewer.send(data);
       } catch {
-        this.viewers.delete(viewer);
+        // a send to a half-closed socket is not fatal to the room; webSocketClose will reap it
       }
     }
+  }
+
+  private async recordViewer(token: string): Promise<void> {
+    const key = `${VIEWER_KEY_PREFIX}${token}`;
+    const alreadySeen = await this.state.storage.get(key);
+    if (alreadySeen) return;
+    await this.state.storage.put(key, true);
+
+    const roomId = this.state.id.toString();
+    await this.env.DB.prepare("INSERT OR IGNORE INTO joins (token, room, first_seen) VALUES (?, ?, ?)")
+      .bind(token, roomId, new Date().toISOString())
+      .run();
+  }
+
+  private async appendBackfill(message: string | ArrayBuffer): Promise<void> {
+    const entry: FrameEntry =
+      typeof message === "string"
+        ? { binary: false, data: message, size: message.length }
+        : { binary: true, data: bufferToBase64(message), size: message.byteLength };
+
+    const current = (await this.state.storage.get<FrameEntry[]>(BACKFILL_KEY)) ?? [];
+    await this.state.storage.put(BACKFILL_KEY, appendToRingBuffer(current, entry, BACKFILL_LIMIT_BYTES));
+  }
+
+  private async sendBackfill(ws: WebSocket): Promise<void> {
+    const frames = (await this.state.storage.get<FrameEntry[]>(BACKFILL_KEY)) ?? [];
+    for (const frame of frames) {
+      ws.send(frame.binary ? base64ToBuffer(frame.data) : frame.data);
+    }
+  }
+
+  private async handleStats(): Promise<Response> {
+    const live = this.state.getWebSockets("host").length > 0;
+    const viewers = await this.countViewers();
+    return Response.json({ viewers, live });
+  }
+
+  private async countViewers(): Promise<number> {
+    const seen = await this.state.storage.list({ prefix: VIEWER_KEY_PREFIX });
+    return seen.size;
   }
 }
