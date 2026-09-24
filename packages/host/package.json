@@ -7,7 +7,8 @@
     "sesh": "./index.js"
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "postinstall": "node -e \"const fs=require('fs'),path=require('path');try{const dir=path.dirname(require.resolve('node-pty/package.json'));const helper=path.join(dir,'prebuilds','darwin-arm64','spawn-helper');if(fs.existsSync(helper))fs.chmodSync(helper,0o755)}catch{}\""
   },
   "dependencies": {
     "node-pty": "^1.1.0",

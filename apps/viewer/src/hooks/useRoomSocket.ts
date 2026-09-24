@@ -4,16 +4,18 @@ import { useViewerToken } from "./useViewerToken"
 
 export type ConnectionState = "connecting" | "live" | "ended" | "invalid"
 
-type ControlFrame = { type: "resize"; cols: number; rows: number } | { type: "ended" } | null
+type ControlFrame = { type: "resize"; cols: number; rows: number } | { type: "ended" } | { type: "invalid" } | null
 
 const STATS_POLL_MS = 10_000
+const INVALID_ROOM_CLOSE_CODE = 4404
 
-// Terminal bytes travel as binary frames; resize/ended control messages travel as JSON text, so the two never collide.
+// Terminal bytes travel as binary frames; resize/ended/invalid control messages travel as JSON text, so they never collide.
 function parseControlFrame(raw: string): ControlFrame {
   try {
     const parsed = JSON.parse(raw)
     if (parsed?.type === "resize" && typeof parsed.cols === "number" && typeof parsed.rows === "number") return parsed
     if (parsed?.type === "ended") return { type: "ended" }
+    if (parsed?.type === "invalid") return { type: "invalid" }
     return null
   } catch {
     return null
@@ -40,11 +42,13 @@ export function useRoomSocket(
         const frame = parseControlFrame(event.data)
         if (frame?.type === "resize") onResize(frame.cols, frame.rows)
         if (frame?.type === "ended") setState("ended")
+        if (frame?.type === "invalid") setState("invalid")
         return
       }
       onFrame(new Uint8Array(event.data as ArrayBuffer))
     }
-    socket.onclose = () => setState((current) => (current === "connecting" ? "invalid" : "ended"))
+    socket.onclose = (event) =>
+      setState((current) => (current === "connecting" || event.code === INVALID_ROOM_CLOSE_CODE ? "invalid" : "ended"))
     socket.onerror = () => setState((current) => (current === "connecting" ? "invalid" : current))
 
     return () => socket.close()

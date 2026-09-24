@@ -46,6 +46,39 @@ export function base64ToBuffer(base64: string): ArrayBuffer {
   return bytes.buffer;
 }
 
+// Live viewer count is the open-socket count for this room, not the distinct-token count that D1 tracks for the aggregate metric.
+export function countLiveViewers(viewerSockets: unknown[]): number {
+  return viewerSockets.length;
+}
+
+export interface ClosableSocket {
+  send(data: string): void;
+  close(code: number, reason?: string): void;
+}
+
+export const ENDED_FRAME = JSON.stringify({ type: "ended" });
+
+// A room only exists once its host has connected at least once and written the host token.
+export function roomExists(createdMarker: unknown): boolean {
+  return Boolean(createdMarker);
+}
+
+// Broadcasts the ended frame then closes every viewer with 1000 so no socket is left dangling after the host leaves.
+export function closeAllViewers(viewers: Iterable<ClosableSocket>): void {
+  for (const viewer of viewers) {
+    try {
+      viewer.send(ENDED_FRAME);
+    } catch {
+      // a send to an already-closing socket is not fatal to session teardown
+    }
+    try {
+      viewer.close(1000, "host ended");
+    } catch {
+      // already closing
+    }
+  }
+}
+
 export function isValidEmail(email: string | undefined | null): email is string {
   if (!email) return false;
   const trimmed = email.trim();

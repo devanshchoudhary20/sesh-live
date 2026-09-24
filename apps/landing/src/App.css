@@ -103,7 +103,7 @@
   border: none;
   border-radius: var(--radius-md);
   background: var(--accent-500);
-  color: var(--neutral-950);
+  color: var(--on-accent);
   font-weight: 600;
   cursor: pointer;
 }

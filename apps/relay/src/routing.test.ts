@@ -1,12 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   appendToRingBuffer,
   base64ToBuffer,
   bufferToBase64,
+  closeAllViewers,
   corsHeaders,
+  countLiveViewers,
+  ENDED_FRAME,
   isValidEmail,
   parseRoomPath,
   resolveRole,
+  roomExists,
+  type ClosableSocket,
   type FrameEntry,
 } from "./routing";
 
@@ -73,6 +78,47 @@ describe("base64 round trip", () => {
     const original = new Uint8Array([0, 1, 2, 250, 255, 127]);
     const roundTripped = new Uint8Array(base64ToBuffer(bufferToBase64(original.buffer)));
     expect(Array.from(roundTripped)).toEqual(Array.from(original));
+  });
+});
+
+describe("countLiveViewers", () => {
+  it("counts open sockets, not distinct visitor tokens", () => {
+    expect(countLiveViewers([{}, {}, {}])).toBe(3);
+    expect(countLiveViewers([])).toBe(0);
+  });
+});
+
+describe("roomExists", () => {
+  it("is true only once the host has written a created marker", () => {
+    expect(roomExists("some-host-token")).toBe(true);
+    expect(roomExists(undefined)).toBe(false);
+    expect(roomExists(null)).toBe(false);
+  });
+});
+
+describe("closeAllViewers", () => {
+  const makeSocket = (): ClosableSocket => ({ send: vi.fn(), close: vi.fn() });
+
+  it("sends the ended frame then closes every viewer with 1000", () => {
+    const viewers = [makeSocket(), makeSocket()];
+    closeAllViewers(viewers);
+    for (const viewer of viewers) {
+      expect(viewer.send).toHaveBeenCalledWith(ENDED_FRAME);
+      expect(viewer.close).toHaveBeenCalledWith(1000, "host ended");
+    }
+  });
+
+  it("keeps closing the rest even if one viewer's send throws", () => {
+    const broken: ClosableSocket = {
+      send: () => {
+        throw new Error("socket already gone");
+      },
+      close: vi.fn(),
+    };
+    const healthy = makeSocket();
+    closeAllViewers([broken, healthy]);
+    expect(broken.close).toHaveBeenCalledWith(1000, "host ended");
+    expect(healthy.close).toHaveBeenCalledWith(1000, "host ended");
   });
 });
 

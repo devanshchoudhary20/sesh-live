@@ -1,9 +1,20 @@
 import type { Env } from "./env";
-import { appendToRingBuffer, base64ToBuffer, bufferToBase64, resolveRole, type FrameEntry } from "./routing";
+import {
+  appendToRingBuffer,
+  base64ToBuffer,
+  bufferToBase64,
+  closeAllViewers,
+  countLiveViewers,
+  ENDED_FRAME,
+  resolveRole,
+  roomExists,
+  type FrameEntry,
+} from "./routing";
 
 const BACKFILL_LIMIT_BYTES = 64 * 1024;
 const BACKFILL_KEY = "backfill";
 const HOST_TOKEN_KEY = "hostToken";
+const ENDED_KEY = "ended";
 const VIEWER_KEY_PREFIX = "viewer:";
 
 // One Durable Object per room, on the hibernation API so an idle room costs nothing between frames.
@@ -46,6 +57,9 @@ export class Room implements DurableObject {
   }
 
   private async acceptViewer(url: URL): Promise<Response> {
+    const created = await this.state.storage.get(HOST_TOKEN_KEY);
+    if (!roomExists(created)) return new Response("room does not exist", { status: 404 });
+
     const viewerToken = url.searchParams.get("v") || crypto.randomUUID();
 
     const pair = new WebSocketPair();
@@ -54,6 +68,14 @@ export class Room implements DurableObject {
 
     await this.recordViewer(viewerToken);
     await this.sendBackfill(server);
+
+    // a late joiner on an already-ended room should see "ended" immediately, not hang in "connecting"
+    const ended = await this.state.storage.get(ENDED_KEY);
+    if (ended) {
+      server.send(ENDED_FRAME);
+      server.close(1000, "host ended");
+    }
+
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -70,7 +92,18 @@ export class Room implements DurableObject {
     } catch {
       // socket already closing; nothing to clean up beyond letting hibernation drop it
     }
-    if (this.state.getTags(ws).includes("host")) await this.setLive(false);
+    if (this.state.getTags(ws).includes("host")) await this.endSession();
+  }
+
+  async webSocketError(ws: WebSocket): Promise<void> {
+    if (this.state.getTags(ws).includes("host")) await this.endSession();
+  }
+
+  // Fires once, on whichever event reaches the host socket first: tells every viewer the room is over.
+  private async endSession(): Promise<void> {
+    closeAllViewers(this.state.getWebSockets("viewer"));
+    await this.setLive(false);
+    await this.state.storage.put(ENDED_KEY, true);
   }
 
   private broadcast(data: string | ArrayBuffer): void {
@@ -114,13 +147,8 @@ export class Room implements DurableObject {
 
   private async handleStats(): Promise<Response> {
     const live = this.state.getWebSockets("host").length > 0;
-    const viewers = await this.countViewers();
+    const viewers = countLiveViewers(this.state.getWebSockets("viewer"));
     return Response.json({ viewers, live });
-  }
-
-  private async countViewers(): Promise<number> {
-    const seen = await this.state.storage.list({ prefix: VIEWER_KEY_PREFIX });
-    return seen.size;
   }
 
   // mirrored to D1 so the worker's aggregate /stats can see "any room live" without enumerating every DO

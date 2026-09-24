@@ -18,9 +18,11 @@ function App() {
         </button>
       </div>
 
-      <Hero />
-      <SignupForm count={count} onSuccess={setCount} />
-      <LiveSessionLink />
+      <main>
+        <Hero />
+        <SignupForm count={count} onSuccess={setCount} />
+        <LiveSessionLink />
+      </main>
       <Footer />
     </div>
   )

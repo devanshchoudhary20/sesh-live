@@ -34,3 +34,19 @@ export function encodeEndedFrame() {
 export function nextBackoffMs(attempt) {
   return Math.min(500 * 2 ** attempt, 5000);
 }
+
+// Resolves once the socket's "close" event fires, or after timeoutMs, whichever comes first, so the ended frame gets a chance to flush before the process exits.
+export function waitForClose(ws, timeoutMs = 1500) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(finish, timeoutMs);
+    if (typeof timer.unref === "function") timer.unref();
+    ws.once("close", finish);
+  });
+}

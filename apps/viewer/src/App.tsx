@@ -29,11 +29,11 @@ function App() {
 
   if (!valid || state === "invalid") {
     return (
-      <div className="invalid-card">
+      <main className="invalid-card">
         <h1>This link doesn't work</h1>
         <p>The session link is missing a piece or has expired. Ask whoever sent it for a fresh one, or start your own.</p>
         <a className="cta" href={LANDING_URL}>Get the link for your own session</a>
-      </div>
+      </main>
     )
   }
 

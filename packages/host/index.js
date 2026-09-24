@@ -3,7 +3,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { spawn } from "node-pty";
 import WebSocket from "ws";
-import { createFrameBatcher, encodeEndedFrame, encodeResizeFrame, nextBackoffMs } from "./lib.js";
+import { createFrameBatcher, encodeEndedFrame, encodeResizeFrame, nextBackoffMs, waitForClose } from "./lib.js";
 
 const [cmd, ...args] = process.argv.slice(2);
 if (!cmd) {
@@ -68,11 +68,15 @@ process.on("SIGWINCH", () => {
   sendIfOpen(encodeResizeFrame(cols, rows));
 });
 
-pty.onExit(({ exitCode }) => {
+pty.onExit(async ({ exitCode }) => {
   closing = true;
   batcher.stop();
   sendIfOpen(encodeEndedFrame());
-  if (ws) ws.close();
+  if (ws) {
+    const closed = waitForClose(ws);
+    ws.close();
+    await closed;
+  }
   process.stdin.pause();
   if (process.stdin.isTTY) process.stdin.setRawMode(false);
   process.exit(exitCode ?? 0);

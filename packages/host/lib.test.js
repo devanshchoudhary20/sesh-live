@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { createFrameBatcher, encodeEndedFrame, encodeResizeFrame, nextBackoffMs } from "./lib.js";
+import { createFrameBatcher, encodeEndedFrame, encodeResizeFrame, nextBackoffMs, waitForClose } from "./lib.js";
 
 describe("createFrameBatcher", () => {
   beforeEach(() => vi.useFakeTimers());
@@ -57,5 +57,33 @@ describe("nextBackoffMs", () => {
     expect(nextBackoffMs(0)).toBe(500);
     expect(nextBackoffMs(1)).toBe(1000);
     expect(nextBackoffMs(10)).toBe(5000);
+  });
+});
+
+describe("waitForClose", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("resolves as soon as the socket emits close", async () => {
+    const handlers = {};
+    const ws = { once: (event, cb) => (handlers[event] = cb) };
+    const settled = vi.fn();
+
+    waitForClose(ws, 1500).then(settled);
+    expect(settled).not.toHaveBeenCalled();
+    handlers.close();
+    await Promise.resolve();
+
+    expect(settled).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves after the timeout if close never fires", async () => {
+    const ws = { once: () => undefined };
+    const settled = vi.fn();
+
+    waitForClose(ws, 1500).then(settled);
+    await vi.advanceTimersByTimeAsync(1500);
+
+    expect(settled).toHaveBeenCalledTimes(1);
   });
 });
