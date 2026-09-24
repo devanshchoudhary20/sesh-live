@@ -113,10 +113,15 @@ Both apps import the same `src/tokens.css` (identical file, duplicated per app s
 - Banner above the terminal: `This session has ended. Replay isn't available yet — that's coming in a later milestone.` (exact M0 replay-not-available copy).
 - "Get the link for your own session" CTA is promoted from the top bar into the banner as a second line, in case the visitor missed the top bar.
 
-**Invalid link** (missing or malformed `relay`/`room`, or the WebSocket handshake itself fails with a 4xx before ever opening)
+**Invalid link** (missing or malformed `relay`/`room`, or the relay's viewer socket sends an `{"type":"invalid"}` frame and closes with code `4404` because the room id never had a host)
 - No terminal is mounted at all.
 - Centered card: heading `This link doesn't work`, body `The session link is missing a piece or has expired. Ask whoever sent it for a fresh one, or start your own.`, and a button `Get the link for your own session` to the landing page.
 - Distinguished from "host ended" (a link that worked and then stopped) by copy and by never having shown a live frame.
+
+**Connection error** (the WebSocket closes with code `1006` before a single frame ever arrived — the handshake itself never completed, e.g. the relay is unreachable; distinct from "Invalid link", which is a definite signal from a room the relay knows never existed)
+- No terminal is mounted at all.
+- Centered card: heading `Can't reach the session`, body `Something interrupted the connection before it opened. Check your connection and try the link again.`, and the same `Get the link for your own session` button as the invalid-link card.
+- Terminal, once this state is reached, never downgrades back to "connecting" — a fresh attempt requires a page reload.
 
 ### Values and fallbacks
 
@@ -126,7 +131,7 @@ Both apps import the same `src/tokens.css` (identical file, duplicated per app s
 | Room id | query `?room=` or fragment `#room=` | missing → invalid link state |
 | Session name | query `?name=` | absent → `Session` |
 | Viewer count | relay's periodic count message over the open socket | before first message: `— viewers` (connecting) or `1 viewer` (live, counting self); on disconnect, count freezes at its last value |
-| Live/ended state | WebSocket `open`/`close`/`error` events, plus an explicit end frame the relay sends when the host disconnects | socket error before open → invalid link state, not "ended" (ended implies it was live first) |
+| Live/ended state | WebSocket `open`/`close` events, an `invalid` or `ended` control frame, and the close code (`4404` for invalid, `1006` with no frames for connection error) | close code `4404` or an `invalid` frame → invalid link state; an `ended` frame, or any close reached after "live", → ended; close `1006` while still "connecting" (no frames ever received) → connection error state; invalid, ended, and connection error are all terminal — a later close event never overwrites them |
 | Terminal frames | WebSocket `message` events, raw bytes | none yet → connecting state's placeholder text, never an empty xterm canvas |
 
 ## Both themes

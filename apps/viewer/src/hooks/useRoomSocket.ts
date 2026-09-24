@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react"
 import { RELAY_URL, RELAY_WS_URL } from "../config"
+import { reduceConnectionState, type ConnectionState } from "../lib/connectionState"
 import { useViewerToken } from "./useViewerToken"
 
-export type ConnectionState = "connecting" | "live" | "ended" | "invalid"
+export type { ConnectionState }
 
 type ControlFrame = { type: "resize"; cols: number; rows: number } | { type: "ended" } | { type: "invalid" } | null
 
 const STATS_POLL_MS = 10_000
-const INVALID_ROOM_CLOSE_CODE = 4404
 
 // Terminal bytes travel as binary frames; resize/ended/invalid control messages travel as JSON text, so they never collide.
 function parseControlFrame(raw: string): ControlFrame {
@@ -36,26 +36,26 @@ export function useRoomSocket(
     const socket = new WebSocket(`${RELAY_WS_URL}/r/${roomId}?role=viewer&v=${viewerToken}`)
     socket.binaryType = "arraybuffer"
 
-    socket.onopen = () => setState("live")
+    socket.onopen = () => setState((current) => reduceConnectionState(current, { type: "open" }))
     socket.onmessage = (event) => {
       if (typeof event.data === "string") {
         const frame = parseControlFrame(event.data)
         if (frame?.type === "resize") onResize(frame.cols, frame.rows)
-        if (frame?.type === "ended") setState("ended")
-        if (frame?.type === "invalid") setState("invalid")
+        if (frame?.type === "ended" || frame?.type === "invalid") {
+          setState((current) => reduceConnectionState(current, { type: "control-frame", frame: frame.type }))
+        }
         return
       }
       onFrame(new Uint8Array(event.data as ArrayBuffer))
     }
-    socket.onclose = (event) =>
-      setState((current) => (current === "connecting" || event.code === INVALID_ROOM_CLOSE_CODE ? "invalid" : "ended"))
-    socket.onerror = () => setState((current) => (current === "connecting" ? "invalid" : current))
+    // onerror carries no code; the close event that always follows it is what the state machine decides on
+    socket.onclose = (event) => setState((current) => reduceConnectionState(current, { type: "close", code: event.code }))
 
     return () => socket.close()
   }, [roomId, viewerToken, onFrame, onResize])
 
   useEffect(() => {
-    if (!roomId || state === "invalid") return
+    if (!roomId || state === "invalid" || state === "connection-error") return
     let cancelled = false
 
     const poll = () => {

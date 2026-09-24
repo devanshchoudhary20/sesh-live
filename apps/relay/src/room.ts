@@ -6,6 +6,8 @@ import {
   closeAllViewers,
   countLiveViewers,
   ENDED_FRAME,
+  INVALID_FRAME,
+  INVALID_ROOM_CLOSE_CODE,
   resolveRole,
   roomExists,
   type FrameEntry,
@@ -58,12 +60,18 @@ export class Room implements DurableObject {
 
   private async acceptViewer(url: URL): Promise<Response> {
     const created = await this.state.storage.get(HOST_TOKEN_KEY);
-    if (!roomExists(created)) return new Response("room does not exist", { status: 404 });
-
-    const viewerToken = url.searchParams.get("v") || crypto.randomUUID();
-
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
+
+    if (!roomExists(created)) {
+      // accept the upgrade so the client gets a real WS close (4404) instead of a bare HTTP 404, which reads as a network failure
+      server.accept();
+      server.send(INVALID_FRAME);
+      server.close(INVALID_ROOM_CLOSE_CODE, "room does not exist");
+      return new Response(null, { status: 101, webSocket: client });
+    }
+
+    const viewerToken = url.searchParams.get("v") || crypto.randomUUID();
     this.state.acceptWebSocket(server, ["viewer"]);
 
     await this.recordViewer(viewerToken);

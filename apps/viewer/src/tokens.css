@@ -1,7 +1,8 @@
 :root {
   --neutral-50: #faf8f8;
   --neutral-200: #e7e2d9;
-  --neutral-400: #8c8579;
+  /* darkened from #8c8579 (3.45:1 on --neutral-50) to clear WCAG AA 4.5:1 for .subhead/.counter text */
+  --neutral-400: #6b655a;
   --neutral-700: #3a362f;
   --neutral-950: #161409;
   --accent-500: #f0a020;

@@ -57,6 +57,9 @@ export interface ClosableSocket {
 }
 
 export const ENDED_FRAME = JSON.stringify({ type: "ended" });
+export const INVALID_FRAME = JSON.stringify({ type: "invalid" });
+// Close code for a viewer socket opened against a room that never had a host, so the client gets a reliable signal
+export const INVALID_ROOM_CLOSE_CODE = 4404;
 
 // A room only exists once its host has connected at least once and written the host token.
 export function roomExists(createdMarker: unknown): boolean {

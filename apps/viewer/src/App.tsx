@@ -7,10 +7,24 @@ import "./App.css"
 
 const LANDING_URL = import.meta.env.VITE_LANDING_URL ?? "/"
 
-function indicatorCopy(state: "connecting" | "live" | "ended" | "invalid") {
+function indicatorCopy(state: "connecting" | "live" | "ended") {
   if (state === "live") return { label: "Live", tone: "live" as const }
   if (state === "ended") return { label: "Ended", tone: "ended" as const }
   return { label: "Connecting…", tone: "idle" as const }
+}
+
+// "invalid" is a definite server signal; "connection-error" is a 1006 with no frames, so the copy avoids blaming the link
+function terminalCardCopy(state: "invalid" | "connection-error") {
+  if (state === "connection-error") {
+    return {
+      heading: "Can't reach the session",
+      body: "Something interrupted the connection before it opened. Check your connection and try the link again.",
+    }
+  }
+  return {
+    heading: "This link doesn't work",
+    body: "The session link is missing a piece or has expired. Ask whoever sent it for a fresh one, or start your own.",
+  }
 }
 
 function viewerCountCopy(state: string, count: number | null) {
@@ -27,11 +41,12 @@ function App() {
   const handleResize = useCallback((cols: number, rows: number) => terminalRef.current?.resize(cols, rows), [])
   const { state, viewerCount } = useRoomSocket(valid ? roomId : null, handleFrame, handleResize)
 
-  if (!valid || state === "invalid") {
+  if (!valid || state === "invalid" || state === "connection-error") {
+    const card = terminalCardCopy(!valid || state === "invalid" ? "invalid" : "connection-error")
     return (
       <main className="invalid-card">
-        <h1>This link doesn't work</h1>
-        <p>The session link is missing a piece or has expired. Ask whoever sent it for a fresh one, or start your own.</p>
+        <h1>{card.heading}</h1>
+        <p>{card.body}</p>
         <a className="cta" href={LANDING_URL}>Get the link for your own session</a>
       </main>
     )
