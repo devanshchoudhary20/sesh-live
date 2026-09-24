@@ -41,6 +41,7 @@ export class Room implements DurableObject {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
     this.state.acceptWebSocket(server, ["host"]);
+    await this.setLive(true);
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -63,12 +64,13 @@ export class Room implements DurableObject {
     this.broadcast(message);
   }
 
-  webSocketClose(ws: WebSocket, code: number, reason: string): void {
+  async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
     try {
       ws.close(code, reason);
     } catch {
       // socket already closing; nothing to clean up beyond letting hibernation drop it
     }
+    if (this.state.getTags(ws).includes("host")) await this.setLive(false);
   }
 
   private broadcast(data: string | ArrayBuffer): void {
@@ -119,5 +121,15 @@ export class Room implements DurableObject {
   private async countViewers(): Promise<number> {
     const seen = await this.state.storage.list({ prefix: VIEWER_KEY_PREFIX });
     return seen.size;
+  }
+
+  // mirrored to D1 so the worker's aggregate /stats can see "any room live" without enumerating every DO
+  private async setLive(live: boolean): Promise<void> {
+    const roomId = this.state.id.toString();
+    await this.env.DB.prepare(
+      "INSERT INTO rooms (id, live, updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET live = excluded.live, updated_at = excluded.updated_at",
+    )
+      .bind(roomId, live ? 1 : 0, new Date().toISOString())
+      .run();
   }
 }

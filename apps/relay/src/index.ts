@@ -32,11 +32,15 @@ async function handleSignupCount(env: Env): Promise<Response> {
   return Response.json({ count });
 }
 
-// GET /stats: distinct viewer tokens across every room, from the D1 join log rooms write to.
+// GET /stats: distinct viewer tokens across every room, plus whether any room currently has a host connected.
 async function handleAggregateStats(env: Env): Promise<Response> {
   const { results } = await env.DB.prepare("SELECT COUNT(DISTINCT token) as count FROM joins").all<{ count: number }>();
   const viewers = results?.[0]?.count ?? 0;
-  return Response.json({ viewers });
+
+  const liveRows = await env.DB.prepare("SELECT EXISTS(SELECT 1 FROM rooms WHERE live = 1) as live").all<{ live: number }>();
+  const live = Boolean(liveRows.results?.[0]?.live);
+
+  return Response.json({ viewers, live });
 }
 
 async function routeRoom(request: Request, env: Env, roomId: string): Promise<Response> {

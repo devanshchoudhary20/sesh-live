@@ -26,17 +26,60 @@
   margin-top: var(--space-5);
 }
 
+.subhead {
+  color: var(--neutral-400);
+  font-size: 1rem;
+  margin-top: var(--space-2);
+}
+
 .recording-slot {
   width: 100%;
   max-width: 960px;
   aspect-ratio: 16 / 9;
   background: var(--neutral-200);
   border-radius: var(--radius-md);
+  overflow: hidden;
+  margin: var(--space-6) 0;
+}
+
+.recording-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.code-block {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: var(--neutral-400);
-  margin: var(--space-6) 0;
+  justify-content: space-between;
+  gap: var(--space-3);
+  background: var(--neutral-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-mono);
+}
+
+.code-block code {
+  color: var(--fg-strong);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.copy-button {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.copy-button:hover {
+  border-color: var(--accent-500);
+  color: var(--accent-600);
 }
 
 .signup-form {
@@ -105,4 +148,27 @@
 
 .footer a {
   color: var(--fg);
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: var(--space-4) var(--space-3) var(--space-6);
+  }
+
+  .headline {
+    font-size: 1.25rem;
+  }
+
+  .signup-form {
+    flex-direction: column;
+  }
+
+  .code-block {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .copy-button {
+    align-self: flex-start;
+  }
 }
