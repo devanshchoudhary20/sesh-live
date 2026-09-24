@@ -1,0 +1,45 @@
+:root {
+  --neutral-50: #faf8f8;
+  --neutral-200: #e7e2d9;
+  --neutral-400: #8c8579;
+  --neutral-700: #3a362f;
+  --neutral-950: #161409;
+  --accent-500: #f0a020;
+  --accent-600: #d3870c;
+  --error-500: #c6362b;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --bg: var(--neutral-50);
+  --fg: var(--neutral-700);
+  --fg-strong: var(--neutral-950);
+  --border: var(--neutral-200);
+}
+
+[data-theme="dark"] {
+  --neutral-50: #131110;
+  --neutral-200: #2a2621;
+  --neutral-400: #948c7e;
+  --neutral-700: #d9d4c9;
+  --neutral-950: #f5f2ea;
+  --accent-500: #f0a020;
+  --accent-600: #ffb84d;
+
+  --bg: var(--neutral-50);
+  --fg: var(--neutral-700);
+  --fg-strong: var(--neutral-950);
+  --border: var(--neutral-200);
+}

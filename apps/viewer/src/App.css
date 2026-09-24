@@ -1,0 +1,116 @@
+.viewer-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+.session-name {
+  font-weight: 500;
+  color: var(--fg-strong);
+}
+
+.indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neutral-400);
+}
+
+.indicator-live .dot {
+  background: var(--accent-500);
+}
+
+.indicator-ended .dot {
+  background: var(--neutral-400);
+}
+
+.viewer-count {
+  color: var(--neutral-400);
+}
+
+.cta-small,
+.cta {
+  color: var(--accent-600);
+  text-decoration: none;
+  margin-left: auto;
+}
+
+.theme-toggle {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.ended-banner {
+  padding: var(--space-3) var(--space-4);
+  background: var(--neutral-200);
+  color: var(--fg-strong);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 0.9rem;
+}
+
+.ended-banner a {
+  color: var(--accent-600);
+}
+
+.terminal-area {
+  flex: 1;
+  position: relative;
+  display: flex;
+}
+
+.terminal-mount {
+  flex: 1;
+}
+
+.terminal-area-dimmed {
+  opacity: 0.7;
+}
+
+.connecting-text {
+  margin: auto;
+  color: var(--neutral-400);
+  font-family: var(--font-mono);
+}
+
+.invalid-card {
+  max-width: 480px;
+  margin: var(--space-8) auto;
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-align: center;
+  font-family: var(--font-sans);
+}
+
+.invalid-card .cta {
+  display: inline-block;
+  margin-top: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background: var(--accent-500);
+  color: var(--neutral-950);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+}

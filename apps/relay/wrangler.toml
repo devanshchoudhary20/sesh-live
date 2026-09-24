@@ -1,0 +1,16 @@
+name = "sesh-relay"
+main = "src/index.ts"
+compatibility_date = "2026-09-25"
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["Room"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sesh-signups"
+database_id = "REPLACE_WITH_D1_ID"

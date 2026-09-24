@@ -1,0 +1,13 @@
+{
+  "name": "@sesh/host",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "bin": {
+    "sesh-poc": "./index.js"
+  },
+  "dependencies": {
+    "node-pty": "^1.1.0",
+    "ws": "^8.21.3"
+  }
+}

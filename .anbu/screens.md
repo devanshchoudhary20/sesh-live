@@ -1,0 +1,138 @@
+# Screens: sesh, milestone 0 (demand probe)
+
+Scope: the two M0 screens only (landing, viewer PoC). M1+ screens (join gate, wheel UI, host status page, replay, session list) are named in `plan.md` `## Screens` and get their own `screens.md` entries when M1 is designed.
+
+## Direction
+
+**Typefaces.** IBM Plex Sans (UI text: headline, body, buttons, form) paired with IBM Plex Mono (terminal chrome, session names, counters, the friend-sentence headline's code fragments). Same type family across both weights keeps letterforms consistent between the marketing page and the terminal it is selling, and the mono cut is real xterm-adjacent typography, not a display font pretending to be a terminal. Loaded self-hosted (`@fontsource/ibm-plex-sans`, `@fontsource/ibm-plex-mono`) so no third-party script reaches the viewer, per the plan's no-third-party-script rule.
+
+**Color.** Warm neutral scale (not Tailwind's cool gray) plus one amber accent tied to the product's own "live" signal:
+
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `--neutral-50` | `#FAFAF8` | `#131110` | page background |
+| `--neutral-200` | `#E7E2D9` | `#2A2621` | borders, dividers, input bg |
+| `--neutral-400` | `#8C8579` | `#948C7E` | secondary text, placeholder |
+| `--neutral-700` | `#3A362F` | `#D9D4C9` | primary text |
+| `--neutral-950` | `#161409` | `#F5F2EA` | headline text, max-contrast |
+| `--accent-500` | `#F0A020` | `#F0A020` | live dot, CTA button, focus ring |
+| `--accent-600` | `#D3870C` | `#FFB84D` | hover/pressed (darkens in light, lightens in dark) |
+
+Both apps import the same `src/tokens.css` (identical file, duplicated per app since each Vite app builds standalone; a shared `packages/tokens` earns its keep once a third app needs it, not at two).
+
+**Terminal colors.** The viewer's xterm instance uses xterm.js's own default theme unmodified in dark mode (background `#000000`, foreground `#FFFFFF`, cursor `#FFFFFF`, standard 16-color ANSI palette). Documented light theme flips background/foreground/cursor only and keeps the same 16 ANSI colors, which xterm.js's own docs note stay legible on white:
+
+| xterm theme key | Dark (default) | Light (documented) |
+|---|---|---|
+| `background` | `#000000` | `#FFFFFF` |
+| `foreground` | `#FFFFFF` | `#000000` |
+| `cursor` | `#FFFFFF` | `#000000` |
+| `black` / `brightBlack` | `#000000` / `#666666` | same |
+| `red` / `brightRed` | `#CD3131` / `#F14C4C` | same |
+| `green` / `brightGreen` | `#0DBC79` / `#23D18B` | same |
+| `yellow` / `brightYellow` | `#E5E510` / `#F5F543` | same |
+| `blue` / `brightBlue` | `#2472C8` / `#3B8EEA` | same |
+| `magenta` / `brightMagenta` | `#BC3FBC` / `#D670D6` | same |
+| `cyan` / `brightCyan` | `#11A8CD` / `#29B8DB` | same |
+| `white` / `brightWhite` | `#E5E5E5` / `#FFFFFF` | same |
+
+**Spacing scale (px).** `4, 8, 12, 16, 24, 32, 48, 64` as `--space-1` through `--space-8`. Covers icon gaps (`--space-1`) up to section padding (`--space-8`) without a step so fine it never gets used.
+
+**Radius.** `--radius-sm: 4px` (badges, the live dot's square-ish pill, counter chip) and `--radius-md: 8px` (buttons, input, cards, the terminal frame). No `--radius-lg`; two screens don't need a third size.
+
+**Components: hand-rolled.** Reason: two static pages with one stateful widget (xterm.js) between them don't earn a component library's bundle weight or API surface; a button, an input, and a status pill are each under 20 lines and used once or twice per screen.
+
+## Screen 1: Landing (`apps/landing`)
+
+### Happy path
+
+1. Visitor arrives from an HN comment, the issue thread, or Show HN and sees, top to bottom: the friend-sentence headline, a 20-second recording placeholder (`<video>` slot, 960×540, 16:9), an email field with a "Get the link" button, a live signup counter beneath the form, and a "watch a live session now" link when a PoC session is up.
+2. Visitor types an email and clicks "Get the link".
+3. The button shows a pending state while `POST /signup` is in flight.
+4. On success, the field clears, the button reads "You're in", and the counter increments to the server's returned count.
+5. Visitor optionally clicks "watch a live session now" and lands on `apps/viewer` with that session's relay URL in the query string.
+6. Visitor scrolls to the footer and clicks the GitHub link to the repo.
+
+### States
+
+**Empty** (page loads, counter not yet fetched, no session up)
+- Counter reads `— signups so far` (em dash, not `0`, so a slow fetch never flashes a false zero). Once the fetch resolves to an actual `0`, copy becomes `Be the first to sign up`.
+- "Watch a live session now" link is replaced by static text: `No live session right now — check back during a posting window, or leave your email below.`
+- Recording placeholder shows a static frame with centered text `Recording coming soon` if no `video.src` is configured (env var `VITE_DEMO_VIDEO_URL` unset).
+
+**Loading** (counter fetch in flight, form idle)
+- Counter shows `— signups so far` (same em-dash fallback as empty; loading and pre-fetch empty are visually identical on purpose, no skeleton shimmer for one number).
+- Form is interactive during this state; a slow counter fetch never blocks signup.
+
+**Error** (`POST /signup` fails: network error, non-2xx, or malformed JSON)
+- Inline text under the form, in `--accent-500`... no: error text uses a distinct red, not the amber accent, so it never reads as "live". Add `--error-500: #C6362B` (documented here, used only for this state and its viewer analogue) reading: `Couldn't save that — check the address and try again.`
+- Button reverts from pending to its default label `Get the link`, re-enabled immediately (no cooldown).
+- Counter is untouched (still shows its last known value, not `— signups so far`, since the fetch that populated it did not fail).
+
+**Success** (`POST /signup` returns 2xx with `{ count }`)
+- Button label becomes `You're in`, disabled for 3 seconds then reverts to `Get the link` with the field cleared, so a second, different email can be added.
+- Counter updates to the server's `count` value directly (never optimistically incremented client-side, since the server is the count of truth and a failed request must not have already bumped it).
+- If the response is 2xx but `count` is missing or not a number (malformed server response), counter keeps its last known value and does not fall back to `— signups so far` (that fallback is reserved for "never fetched", not "fetched something broken").
+
+### Values and fallbacks
+
+| Value | Source | Fallback |
+|---|---|---|
+| Signup count | `GET /signup` | `— signups so far` until first successful fetch; last known value on any later failure |
+| Live session presence + relay URL | build-time env `VITE_DEMO_SESSION_URL` (M0 has no session directory) | absent → static "no live session" copy above; the link itself is never rendered with an empty `href` |
+| Demo recording | `VITE_DEMO_VIDEO_URL` | unset → static placeholder frame, exact copy above, fixed 960×540 box so layout never shifts when the real clip lands |
+| Email input | user | empty submit is blocked client-side (`required`, no request sent); no server round-trip for an obviously blank field |
+| GitHub link | build-time constant | hardcoded `https://github.com/<owner>/sesh` in footer; never sourced from an API so it cannot be undefined |
+
+## Screen 2: Viewer, read-only PoC (`apps/viewer`)
+
+### Happy path
+
+1. Visitor opens the link they were sent, of the form `/?relay=wss://sesh-relay.<account>.workers.dev&room=<id>` (query) or `/#relay=...&room=...` (fragment; the CLI's printed link at M0 uses whichever the host's environment produced).
+2. Viewer parses `relay` and `room` from the query first, the fragment second, on page load.
+3. App shows the connecting state while the WebSocket to `wss://.../room/<id>?role=viewer` opens.
+4. On open, the top bar shows the session name, a live indicator, and the viewer count; the terminal below fills the rest of the viewport and starts rendering host frames as they arrive.
+5. If the host process exits or its socket closes, the top bar switches to an ended indicator and the terminal freezes on its last frame.
+6. Visitor clicks "Get the link for your own session" in the top bar and lands on `apps/landing`.
+
+### States
+
+**Connecting** (WebSocket not yet open)
+- Top bar: live indicator shows a static gray dot, label `Connecting…`. Session name shows `Session` (generic, since the name isn't known until the relay's first message) if no `?name=` param was in the link, else the param's value.
+- Terminal area shows centered text `Connecting to the session…` on the theme's terminal background, no xterm instance mounted yet (avoids a flash of an empty black/white box before the real one).
+- Viewer count shows `— viewers`.
+
+**Live** (WebSocket open, frames flowing)
+- Live indicator: amber (`--accent-500`) dot, label `Live`.
+- Viewer count updates from the relay's periodic count message; if a count message hasn't arrived yet even though the socket is open, shows `1 viewer` (counting the visitor themselves as the floor, never `0` while their own connection is live).
+- Terminal renders raw PTY bytes via xterm.js, read-only (no keyboard listener attached at M0, no wheel).
+
+**Host ended** (relay closes the room, or sends an explicit end frame)
+- Live indicator: gray dot, label `Ended`.
+- Terminal keeps its last rendered frame, dimmed to 70% opacity via a CSS overlay, so the visitor can still read the last lines.
+- Banner above the terminal: `This session has ended. Replay isn't available yet — that's coming in a later milestone.` (exact M0 replay-not-available copy).
+- "Get the link for your own session" CTA is promoted from the top bar into the banner as a second line, in case the visitor missed the top bar.
+
+**Invalid link** (missing or malformed `relay`/`room`, or the WebSocket handshake itself fails with a 4xx before ever opening)
+- No terminal is mounted at all.
+- Centered card: heading `This link doesn't work`, body `The session link is missing a piece or has expired. Ask whoever sent it for a fresh one, or start your own.`, and a button `Get the link for your own session` to the landing page.
+- Distinguished from "host ended" (a link that worked and then stopped) by copy and by never having shown a live frame.
+
+### Values and fallbacks
+
+| Value | Source | Fallback |
+|---|---|---|
+| Relay URL | query `?relay=` or fragment `#relay=` | missing/malformed → invalid link state, no connection attempted |
+| Room id | query `?room=` or fragment `#room=` | missing → invalid link state |
+| Session name | query `?name=` | absent → `Session` |
+| Viewer count | relay's periodic count message over the open socket | before first message: `— viewers` (connecting) or `1 viewer` (live, counting self); on disconnect, count freezes at its last value |
+| Live/ended state | WebSocket `open`/`close`/`error` events, plus an explicit end frame the relay sends when the host disconnects | socket error before open → invalid link state, not "ended" (ended implies it was live first) |
+| Terminal frames | WebSocket `message` events, raw bytes | none yet → connecting state's placeholder text, never an empty xterm canvas |
+
+## Both themes
+
+Both screens read `prefers-color-scheme` on load and expose a manual toggle (button in the landing header, icon button in the viewer top bar) that sets a `data-theme` attribute on `<html>`; `tokens.css` defines both `:root` (light) and `[data-theme="dark"]` blocks for every token above, plus the xterm theme object is chosen in JS from the same `data-theme` attribute so the terminal and the chrome around it never mismatch.
+
+## Analytics
+
+None beyond the two counters already specified (landing signup count, viewer distinct-viewer count), both read from the relay/D1, not from any third-party script, per the plan's no-third-party-script rule.

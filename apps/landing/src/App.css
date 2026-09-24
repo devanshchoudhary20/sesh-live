@@ -1,0 +1,108 @@
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-8);
+}
+
+.top-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.theme-toggle {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+
+.headline {
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  line-height: 1.5;
+  color: var(--fg-strong);
+  margin-top: var(--space-5);
+}
+
+.recording-slot {
+  width: 100%;
+  max-width: 960px;
+  aspect-ratio: 16 / 9;
+  background: var(--neutral-200);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neutral-400);
+  margin: var(--space-6) 0;
+}
+
+.signup-form {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+.signup-form input {
+  flex: 1;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  color: var(--fg-strong);
+  font-size: 1rem;
+}
+
+.signup-form button {
+  padding: var(--space-3) var(--space-5);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--accent-500);
+  color: var(--neutral-950);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.signup-form button:hover {
+  background: var(--accent-600);
+}
+
+.signup-form button:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.error-text {
+  color: var(--error-500);
+  margin-top: var(--space-2);
+  font-size: 0.9rem;
+}
+
+.counter {
+  margin-top: var(--space-3);
+  font-family: var(--font-mono);
+  color: var(--neutral-400);
+}
+
+.live-link {
+  margin-top: var(--space-5);
+  font-size: 0.95rem;
+}
+
+.live-link a {
+  color: var(--accent-600);
+}
+
+.footer {
+  margin-top: var(--space-8);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+  color: var(--neutral-400);
+}
+
+.footer a {
+  color: var(--fg);
+}

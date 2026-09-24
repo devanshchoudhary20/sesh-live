@@ -1,0 +1,25 @@
+{
+  "name": "sesh",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w apps/landing && npm run build -w apps/viewer && npm run typecheck -w apps/relay",
+    "dev:landing": "npm run dev -w apps/landing",
+    "dev:viewer": "npm run dev -w apps/viewer",
+    "dev:relay": "npm run dev -w apps/relay",
+    "lint": "node scripts/check-comments.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "node-pty@1.1.0": true,
+    "workerd@1.20260921.1": true,
+    "fsevents@2.3.3": true
+  }
+}
