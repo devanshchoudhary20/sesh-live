@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { RELAY_URL, RELAY_WS_URL } from "../config"
 import { reduceConnectionState, type ConnectionState, type SocketEvent } from "../lib/connectionState"
 import { useViewerToken } from "./useViewerToken"
@@ -35,8 +35,13 @@ function parseControlFrame(raw: string): ControlFrame {
   }
 }
 
+export type RoomSocketConnection = {
+  disconnect: () => void
+  requestReplay: () => void
+}
+
 // `active` scopes every handler to this call's own socket, so a StrictMode remount's stale socket can never dispatch after cleanup.
-export function connectRoomSocket(url: string, handlers: SocketHandlers): () => void {
+export function connectRoomSocket(url: string, handlers: SocketHandlers): RoomSocketConnection {
   let active = true
   const socket = new WebSocket(url)
   socket.binaryType = "arraybuffer"
@@ -64,12 +69,18 @@ export function connectRoomSocket(url: string, handlers: SocketHandlers): () => 
     handlers.dispatch({ type: "close", code: event.code })
   }
 
-  return () => {
-    active = false
-    socket.onopen = null
-    socket.onmessage = null
-    socket.onclose = null
-    socket.close(1000)
+  return {
+    disconnect() {
+      active = false
+      socket.onopen = null
+      socket.onmessage = null
+      socket.onclose = null
+      socket.close(1000)
+    },
+    // a remounted <Terminal> can't trust its local queue after a StrictMode double-invoke, so it asks the relay to resend meta/resize/backfill directly
+    requestReplay() {
+      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "replay" }))
+    },
   }
 }
 
@@ -82,17 +93,25 @@ export function useRoomSocket(
   const viewerToken = useViewerToken()
   const [state, setState] = useState<ConnectionState>(roomId ? "connecting" : "invalid")
   const [viewerCount, setViewerCount] = useState<number | null>(null)
+  const connectionRef = useRef<RoomSocketConnection | null>(null)
 
   useEffect(() => {
     if (!roomId) return
     const dispatch = (event: SocketEvent) => setState((current) => reduceConnectionState(current, event))
-    return connectRoomSocket(`${RELAY_WS_URL}/r/${roomId}?role=viewer&v=${viewerToken}`, {
+    const connection = connectRoomSocket(`${RELAY_WS_URL}/r/${roomId}?role=viewer&v=${viewerToken}`, {
       onFrame,
       onResize,
       onMeta,
       dispatch,
     })
+    connectionRef.current = connection
+    return () => {
+      connectionRef.current = null
+      connection.disconnect()
+    }
   }, [roomId, viewerToken, onFrame, onResize, onMeta])
+
+  const requestReplay = useCallback(() => connectionRef.current?.requestReplay(), [])
 
   useEffect(() => {
     // ended is terminal too: once the host is gone the last poll result is the final viewer count, not a fresh "0"
@@ -116,5 +135,5 @@ export function useRoomSocket(
     }
   }, [roomId, state])
 
-  return { state, viewerCount }
+  return { state, viewerCount, requestReplay }
 }

@@ -141,7 +141,9 @@ PM gate 3 fix (2026-09-25): the host now sends a `resize` control frame on conne
 
 ## Both themes
 
-Both screens read `prefers-color-scheme` on load and expose a manual toggle (button in the landing header, icon button in the viewer top bar) that sets a `data-theme` attribute on `<html>`; `tokens.css` defines both `:root` (light) and `[data-theme="dark"]` blocks for every token above, plus the xterm theme object is chosen in JS from the same `data-theme` attribute so the terminal and the chrome around it never mismatch.
+Both screens read `prefers-color-scheme` on load and expose a manual toggle (button in the landing header, icon button in the viewer top bar) that sets a `data-theme` attribute on `<html>`; `tokens.css` defines both `:root` (light) and `[data-theme="dark"]` blocks for every token above.
+
+**Terminal stays dark in both themes (2026-09-25 fix):** the viewer's xterm instance and its container no longer flip with `data-theme`; the top bar and cards still follow the page theme, but the terminal frame is fixed dark (`--terminal-bg`/`--terminal-fg`). Claude Code emits truecolor escapes that bypass the palette, so a light terminal cannot be made accessible from the viewer.
 
 ## Analytics
 

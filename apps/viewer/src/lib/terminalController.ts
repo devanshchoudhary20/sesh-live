@@ -5,35 +5,31 @@ export interface XTermLike {
 
 type QueuedOp = { kind: "write"; data: Uint8Array } | { kind: "resize"; cols: number; rows: number }
 
-// A late joiner's join-frame burst can reach the app before xterm exists; queueing here, outside React's effect timing, means mount() always replays it in call order instead of dropping it.
+const apply = (instance: XTermLike, op: QueuedOp) => {
+  if (op.kind === "write") instance.write(op.data)
+  else instance.resize(op.cols, op.rows)
+}
+
+// The queue is never drained: StrictMode can attach, flush, then detach and dispose an instance before the surviving one attaches, so every attach must be able to replay full history, not just what's arrived since the last flush.
 export function createTerminalController() {
   let term: XTermLike | null = null
-  let queue: QueuedOp[] = []
-
-  const flush = () => {
-    if (!term) return
-    for (const op of queue) {
-      if (op.kind === "write") term.write(op.data)
-      else term.resize(op.cols, op.rows)
-    }
-    queue = []
-  }
+  const queue: QueuedOp[] = []
 
   return {
-    mount(instance: XTermLike) {
+    attach(instance: XTermLike) {
       term = instance
-      flush()
+      for (const op of queue) apply(instance, op)
     },
-    unmount() {
+    detach() {
       term = null
     },
     write(data: Uint8Array) {
+      queue.push({ kind: "write", data })
       if (term) term.write(data)
-      else queue.push({ kind: "write", data })
     },
     resize(cols: number, rows: number) {
+      queue.push({ kind: "resize", cols, rows })
       if (term) term.resize(cols, rows)
-      else queue.push({ kind: "resize", cols, rows })
     },
   }
 }

@@ -12,6 +12,9 @@
   --error-500: #c6362b;
   /* fixed near-black regardless of theme, since accent-500's fill doesn't flip and neutral-950 does */
   --on-accent: #14110a;
+  /* terminal stays dark in both page themes: Claude Code emits truecolor escapes xterm's theme can't override, so a light terminal can't be made accessible */
+  --terminal-bg: #000000;
+  --terminal-fg: #ffffff;
 
   --space-1: 4px;
   --space-2: 8px;

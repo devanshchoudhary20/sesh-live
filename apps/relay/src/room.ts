@@ -97,9 +97,15 @@ export class Room implements DurableObject {
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  // Host frames fan out to every connected viewer; viewer messages are ignored (read-only at M0).
+  // Host frames fan out to every connected viewer; a viewer's only message is a replay request (read-only at M0 otherwise).
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
-    if (!this.state.getTags(ws).includes("host")) return;
+    const tags = this.state.getTags(ws);
+    if (tags.includes("viewer")) {
+      // a remounted terminal can't trust its local queue, so it asks for the same meta/resize/backfill burst a fresh join gets
+      if (isControlFrame(message, "replay")) await this.sendJoinFrames(ws);
+      return;
+    }
+    if (!tags.includes("host")) return;
     if (isControlFrame(message, "resize")) await this.state.storage.put(RESIZE_KEY, message as string);
     if (isControlFrame(message, "meta")) await this.state.storage.put(META_KEY, message as string);
     await this.appendBackfill(message);

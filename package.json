@@ -11,6 +11,8 @@
     "dev:landing": "npm run dev -w apps/landing",
     "dev:viewer": "npm run dev -w apps/viewer",
     "dev:relay": "npm run dev -w apps/relay",
+    "preview:landing": "npm run preview -w apps/landing -- --port 4173",
+    "preview:viewer": "npm run preview -w apps/viewer -- --port 4174",
     "lint": "node scripts/check-comments.mjs",
     "test": "npm run test --workspaces --if-present"
   },

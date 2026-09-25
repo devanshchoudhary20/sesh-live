@@ -52,7 +52,7 @@ function App() {
   const handleFrame = useCallback((data: Uint8Array) => controller.write(data), [controller])
   const handleResize = useCallback((cols: number, rows: number) => controller.resize(cols, rows), [controller])
   const handleMeta = useCallback((name: string) => setHostName(name), [])
-  const { state, viewerCount } = useRoomSocket(valid ? roomId : null, handleFrame, handleResize, handleMeta)
+  const { state, viewerCount, requestReplay } = useRoomSocket(valid ? roomId : null, handleFrame, handleResize, handleMeta)
 
   if (!valid || state === "invalid" || state === "connection-error") {
     const card = terminalCardCopy(!valid || state === "invalid" ? "invalid" : "connection-error")
@@ -96,7 +96,7 @@ function App() {
         {state === "connecting" ? (
           <p className="connecting-text">Connecting to the session…</p>
         ) : (
-          <Terminal theme={theme} controller={controller} />
+          <Terminal controller={controller} onAttach={requestReplay} />
         )}
       </main>
     </div>

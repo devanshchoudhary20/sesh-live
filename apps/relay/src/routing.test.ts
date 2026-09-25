@@ -136,6 +136,11 @@ describe("isControlFrame", () => {
     expect(isControlFrame(new ArrayBuffer(4), "resize")).toBe(false);
     expect(isControlFrame("not json", "resize")).toBe(false);
   });
+
+  it("recognizes a replay request from a remounted viewer terminal", () => {
+    expect(isControlFrame(JSON.stringify({ type: "replay" }), "replay")).toBe(true);
+    expect(isControlFrame(JSON.stringify({ type: "resize", cols: 80, rows: 24 }), "replay")).toBe(false);
+  });
 });
 
 describe("buildJoinFrames", () => {

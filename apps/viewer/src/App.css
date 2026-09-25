@@ -90,6 +90,7 @@
   flex: 1;
   position: relative;
   display: flex;
+  background: var(--terminal-bg);
 }
 
 .terminal-mount {
@@ -108,7 +109,8 @@
 
 .connecting-text {
   margin: auto;
-  color: var(--neutral-400);
+  color: var(--terminal-fg);
+  opacity: 0.6;
   font-family: var(--font-mono);
 }
 
