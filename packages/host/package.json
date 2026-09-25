@@ -20,7 +20,7 @@
     "live-stream"
   ],
   "bin": {
-    "sesh-live": "./index.js"
+    "sesh-live": "index.js"
   },
   "files": [
     "index.js",

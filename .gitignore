@@ -8,3 +8,7 @@ dist
 .env
 .env.*
 !.env.example
+
+# mission state and evidence stay local
+.anbu/
+*.tgz
