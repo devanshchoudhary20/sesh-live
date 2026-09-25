@@ -20,21 +20,21 @@ Scope: the two M0 screens only (landing, viewer PoC). M1+ screens (join gate, wh
 
 Both apps import the same `src/tokens.css` (identical file, duplicated per app since each Vite app builds standalone; a shared `packages/tokens` earns its keep once a third app needs it, not at two).
 
-**Terminal colors.** The viewer's xterm instance uses xterm.js's own default theme unmodified in dark mode (background `#000000`, foreground `#FFFFFF`, cursor `#FFFFFF`, standard 16-color ANSI palette). Documented light theme flips background/foreground/cursor only and keeps the same 16 ANSI colors, which xterm.js's own docs note stay legible on white:
+**Terminal colors.** The viewer's xterm instance uses xterm.js's default dark theme against `#000000`, with three entries pulled lighter (2026-09-25 fix) because they fail WCAG 4.5:1 (standard eight) / 3:1 (bright eight) against a pure-black background: `brightBlack`, `magenta`, `brightMagenta`. Everything else keeps the documented default. The terminal has no light theme (see below):
 
-| xterm theme key | Dark (default) | Light (documented) |
+| xterm theme key | Dark (shipped) | Contrast vs `#000000` |
 |---|---|---|
-| `background` | `#000000` | `#FFFFFF` |
-| `foreground` | `#FFFFFF` | `#000000` |
-| `cursor` | `#FFFFFF` | `#000000` |
-| `black` / `brightBlack` | `#000000` / `#666666` | same |
-| `red` / `brightRed` | `#CD3131` / `#F14C4C` | same |
-| `green` / `brightGreen` | `#0DBC79` / `#23D18B` | same |
-| `yellow` / `brightYellow` | `#E5E510` / `#F5F543` | same |
-| `blue` / `brightBlue` | `#2472C8` / `#3B8EEA` | same |
-| `magenta` / `brightMagenta` | `#BC3FBC` / `#D670D6` | same |
-| `cyan` / `brightCyan` | `#11A8CD` / `#29B8DB` | same |
-| `white` / `brightWhite` | `#E5E5E5` / `#FFFFFF` | same |
+| `background` | `#000000` | — |
+| `foreground` | `#FFFFFF` | 21.00:1 |
+| `cursor` | `#FFFFFF` | 21.00:1 |
+| `black` / `brightBlack` | `#000000` / `#8B8B8B` (was `#666666`) | 1.00:1 / 6.16:1 |
+| `red` / `brightRed` | `#CD3131` / `#F14C4C` | 4.08:1 / 5.88:1 |
+| `green` / `brightGreen` | `#0DBC79` / `#23D18B` | 8.49:1 / 10.56:1 |
+| `yellow` / `brightYellow` | `#E5E510` / `#F5F543` | 15.55:1 / 18.02:1 |
+| `blue` / `brightBlue` | `#2472C8` / `#3B8EEA` | 4.32:1 / 6.24:1 |
+| `magenta` / `brightMagenta` | `#D783FF` / `#E6ADFF` (was `#BC3FBC` / `#D670D6`) | 8.58:1 / 11.79:1 |
+| `cyan` / `brightCyan` | `#11A8CD` / `#29B8DB` | 7.51:1 / 8.97:1 |
+| `white` / `brightWhite` | `#E5E5E5` / `#FFFFFF` | 16.67:1 / 21.00:1 |
 
 **Spacing scale (px).** `4, 8, 12, 16, 24, 32, 48, 64` as `--space-1` through `--space-8`. Covers icon gaps (`--space-1`) up to section padding (`--space-8`) without a step so fine it never gets used.
 

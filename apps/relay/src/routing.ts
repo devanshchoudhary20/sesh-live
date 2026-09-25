@@ -92,10 +92,15 @@ export function isControlFrame(message: string | ArrayBuffer, type: string): boo
   }
 }
 
-// A late joiner needs the host's name and terminal size before any backfilled content redraws into an unsized terminal.
-export function buildJoinFrames(meta: string | null, resize: string | null, backfill: FrameEntry[]): (string | FrameEntry)[] {
+// A late joiner needs the host's name and size before backfill redraws; `ended` trails the burst so a join or replay into an ended room still gets it.
+export function buildJoinFrames(
+  meta: string | null,
+  resize: string | null,
+  backfill: FrameEntry[],
+  ended = false,
+): (string | FrameEntry)[] {
   const leading = [meta, resize].filter((frame): frame is string => Boolean(frame))
-  return [...leading, ...backfill]
+  return ended ? [...leading, ...backfill, ENDED_FRAME] : [...leading, ...backfill]
 }
 
 export interface RateLimiter {

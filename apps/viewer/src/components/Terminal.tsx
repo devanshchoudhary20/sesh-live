@@ -5,8 +5,28 @@ import { computeTerminalScale } from "../lib/terminalScale"
 import type { TerminalController } from "../lib/terminalController"
 import "@xterm/xterm/css/xterm.css"
 
-// Claude Code emits 24-bit truecolor ANSI escapes that bypass xterm's named-palette theme entirely, so a light terminal theme can never be made to pass contrast against real host output; the terminal stays dark in both page themes (see .anbu/screens.md).
-const DARK_THEME: ITheme = { background: "#000000", foreground: "#ffffff", cursor: "#ffffff" }
+// Claude Code emits truecolor escapes that bypass xterm's theme, so the terminal stays dark in both page themes (see .anbu/screens.md); of the default dark ANSI 16, only brightBlack/magenta/brightMagenta fail axe contrast on #000000 and are pulled lighter here.
+const DARK_THEME: ITheme = {
+  background: "#000000",
+  foreground: "#ffffff",
+  cursor: "#ffffff",
+  black: "#000000",
+  red: "#cd3131",
+  green: "#0dbc79",
+  yellow: "#e5e510",
+  blue: "#2472c8",
+  magenta: "#d783ff",
+  cyan: "#11a8cd",
+  white: "#e5e5e5",
+  brightBlack: "#8b8b8b",
+  brightRed: "#f14c4c",
+  brightGreen: "#23d18b",
+  brightYellow: "#f5f543",
+  brightBlue: "#3b8eea",
+  brightMagenta: "#e6adff",
+  brightCyan: "#29b8db",
+  brightWhite: "#ffffff",
+}
 
 export function Terminal({ controller, onAttach }: { controller: TerminalController; onAttach: () => void }) {
   const outerRef = useRef<HTMLDivElement>(null)

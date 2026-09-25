@@ -160,6 +160,12 @@ describe("buildJoinFrames", () => {
   it("falls back to backfill alone when neither control frame is stored", () => {
     expect(buildJoinFrames(null, null, backfill)).toEqual(backfill);
   });
+
+  it("ends the burst with the ended frame for an already-ended room, on both a first join and a replay", () => {
+    const meta = JSON.stringify({ type: "meta", name: "Devansh's Claude Code" });
+    const resize = JSON.stringify({ type: "resize", cols: 120, rows: 40 });
+    expect(buildJoinFrames(meta, resize, backfill, true)).toEqual([meta, resize, ...backfill, ENDED_FRAME]);
+  });
 });
 
 describe("createRateLimiter", () => {

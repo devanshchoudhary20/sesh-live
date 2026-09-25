@@ -30,6 +30,10 @@ describe("reduceConnectionState", () => {
     expect(run("connecting", events)).toBe("ended")
   })
 
+  it("a viewer already live that replays into an ended room becomes ended regardless of the current state", () => {
+    expect(reduceConnectionState("live", { type: "control-frame", frame: "ended" })).toBe("ended")
+  })
+
   it("terminal states never move on a later close of any code", () => {
     expect(run("invalid", [{ type: "close", code: 1000 }])).toBe("invalid")
     expect(run("ended", [{ type: "close", code: 4404 }])).toBe("ended")

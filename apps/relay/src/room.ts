@@ -6,7 +6,6 @@ import {
   bufferToBase64,
   closeAllViewers,
   countLiveViewers,
-  ENDED_FRAME,
   INVALID_FRAME,
   INVALID_ROOM_CLOSE_CODE,
   isControlFrame,
@@ -87,12 +86,8 @@ export class Room implements DurableObject {
     await this.recordViewer(viewerToken, ip);
     await this.sendJoinFrames(server);
 
-    // a late joiner on an already-ended room should see "ended" immediately, not hang in "connecting"
-    const ended = await this.state.storage.get(ENDED_KEY);
-    if (ended) {
-      server.send(ENDED_FRAME);
-      server.close(1000, "host ended");
-    }
+    // a late joiner on an already-ended room should see "ended" immediately, not hang in "connecting"; sendJoinFrames already queued the ended frame
+    if (await this.state.storage.get(ENDED_KEY)) server.close(1000, "host ended");
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -169,12 +164,13 @@ export class Room implements DurableObject {
     await this.state.storage.put(BACKFILL_KEY, appendToRingBuffer(current, entry, BACKFILL_LIMIT_BYTES));
   }
 
-  // Meta and resize (if the relay has them) always lead the backfill, so a late joiner's terminal is named and sized first.
+  // Meta/resize lead the backfill and shared by both a fresh join and a "replay" request, so a reconnect into an ended room still gets the ended frame.
   private async sendJoinFrames(ws: WebSocket): Promise<void> {
     const meta = (await this.state.storage.get<string>(META_KEY)) ?? null;
     const resize = (await this.state.storage.get<string>(RESIZE_KEY)) ?? null;
     const backfill = (await this.state.storage.get<FrameEntry[]>(BACKFILL_KEY)) ?? [];
-    for (const frame of buildJoinFrames(meta, resize, backfill)) {
+    const ended = Boolean(await this.state.storage.get(ENDED_KEY));
+    for (const frame of buildJoinFrames(meta, resize, backfill, ended)) {
       ws.send(typeof frame === "string" ? frame : frame.binary ? base64ToBuffer(frame.data) : frame.data);
     }
   }
