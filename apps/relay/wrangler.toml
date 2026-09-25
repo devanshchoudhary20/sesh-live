@@ -2,9 +2,8 @@ name = "sesh-relay"
 main = "src/index.ts"
 compatibility_date = "2026-09-25"
 
-# placeholder until SHIP wires the real deployed Pages + viewer origins; comma-separated, "*" is an explicit dev-only wildcard entry
 [vars]
-ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:4173"
+ALLOWED_ORIGINS = "https://sesh-live.pages.dev,https://sesh-live-viewer.pages.dev"
 
 [[durable_objects.bindings]]
 name = "ROOM"
@@ -12,7 +11,7 @@ class_name = "Room"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["Room"]
+new_sqlite_classes = ["Room"]
 
 # REPLACE_WITH_D1_ID is a placeholder, not a live database. Create the real one with:
 #   wrangler d1 create sesh-signups
@@ -20,4 +19,4 @@ new_classes = ["Room"]
 [[d1_databases]]
 binding = "DB"
 database_name = "sesh-signups"
-database_id = "REPLACE_WITH_D1_ID"
+database_id = "8882aa0a-1dbd-4373-9e07-f74cd3bb9dae"
