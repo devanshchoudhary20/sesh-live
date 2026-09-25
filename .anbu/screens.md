@@ -44,21 +44,23 @@ Both apps import the same `src/tokens.css` (identical file, duplicated per app s
 
 ## Screen 1: Landing (`apps/landing`)
 
+PM gate 3 fix (2026-09-25): the live link moved above the fold as a pill, before the email form, with its own "N watching" count; the signup button is renamed "Notify me" (it no longer claims to hand over a link immediately); the recording placeholder copy no longer promises a fixed timeline; the plural bug on a signup count of 1 is fixed; GitHub link now points at `sesh-live`, the renamed npm package.
+
 ### Happy path
 
-1. Visitor arrives from an HN comment, the issue thread, or Show HN and sees, top to bottom: the friend-sentence headline, a 20-second recording placeholder (`<video>` slot, 960×540, 16:9), an email field with a "Get the link" button, a live signup counter beneath the form, and a "watch a live session now" link when a PoC session is up.
-2. Visitor types an email and clicks "Get the link".
+1. Visitor arrives from an HN comment, the issue thread, or Show HN and sees, top to bottom: the friend-sentence headline, a "Live now, N watching" pill (or the no-live-session fallback) above the fold, a 20-second recording placeholder (`<video>` slot, 960×540, 16:9), and an email field with a "Notify me" button and a live signup counter beneath it.
+2. Visitor types an email and clicks "Notify me".
 3. The button shows a pending state while `POST /signup` is in flight.
 4. On success, the field clears, the button reads "You're in", and the counter increments to the server's returned count.
-5. Visitor optionally clicks "watch a live session now" and lands on `apps/viewer` with that session's relay URL in the query string.
+5. Visitor optionally clicks the live pill and lands on `apps/viewer` with that session's relay URL.
 6. Visitor scrolls to the footer and clicks the GitHub link to the repo.
 
 ### States
 
 **Empty** (page loads, counter not yet fetched, no session up)
-- Counter reads `— signups so far` (em dash, not `0`, so a slow fetch never flashes a false zero). Once the fetch resolves to an actual `0`, copy becomes `Be the first to sign up`.
-- "Watch a live session now" link is replaced by static text: `No live session right now — check back during a posting window, or leave your email below.`
-- Recording placeholder shows a static frame with centered text `Recording coming soon` if no `video.src` is configured (env var `VITE_DEMO_VIDEO_URL` unset).
+- Counter reads `— signups so far` (em dash, not `0`, so a slow fetch never flashes a false zero). Once the fetch resolves to an actual `0`, copy becomes `Be the first to sign up`; at exactly `1`, copy is `1 signup so far` (singular, PM gate 3 fix).
+- The live pill reads `No live session right now, leave your email to get the link` (PM gate 3 fix: dropped the "posting window" phrasing nobody outside the team understands) and is not a link in this state.
+- Recording placeholder shows a static frame with centered text `Live demo runs during the launch window; recording coming` (PM gate 3 fix, was `Recording coming soon`) if no `video.src` is configured (env var `VITE_DEMO_VIDEO_URL` unset).
 
 **Loading** (counter fetch in flight, form idle)
 - Counter shows `— signups so far` (same em-dash fallback as empty; loading and pre-fetch empty are visually identical on purpose, no skeleton shimmer for one number).
@@ -66,11 +68,11 @@ Both apps import the same `src/tokens.css` (identical file, duplicated per app s
 
 **Error** (`POST /signup` fails: network error, non-2xx, or malformed JSON)
 - Inline text under the form, in `--accent-500`... no: error text uses a distinct red, not the amber accent, so it never reads as "live". Add `--error-500: #C6362B` (documented here, used only for this state and its viewer analogue) reading: `Couldn't save that — check the address and try again.`
-- Button reverts from pending to its default label `Get the link`, re-enabled immediately (no cooldown).
+- Button reverts from pending to its default label `Notify me`, re-enabled immediately (no cooldown).
 - Counter is untouched (still shows its last known value, not `— signups so far`, since the fetch that populated it did not fail).
 
 **Success** (`POST /signup` returns 2xx with `{ count }`)
-- Button label becomes `You're in`, disabled for 3 seconds then reverts to `Get the link` with the field cleared, so a second, different email can be added.
+- Button label becomes `You're in`, disabled for 3 seconds then reverts to `Notify me` with the field cleared, so a second, different email can be added.
 - Counter updates to the server's `count` value directly (never optimistically incremented client-side, since the server is the count of truth and a failed request must not have already bumped it).
 - If the response is 2xx but `count` is missing or not a number (malformed server response), counter keeps its last known value and does not fall back to `— signups so far` (that fallback is reserved for "never fetched", not "fetched something broken").
 
@@ -79,12 +81,14 @@ Both apps import the same `src/tokens.css` (identical file, duplicated per app s
 | Value | Source | Fallback |
 |---|---|---|
 | Signup count | `GET /signup` | `— signups so far` until first successful fetch; last known value on any later failure |
-| Live session presence + relay URL | build-time env `VITE_DEMO_SESSION_URL` (M0 has no session directory) | absent → static "no live session" copy above; the link itself is never rendered with an empty `href` |
+| Live session presence + relay URL | `GET /stats` `.live` (polled every 10s) + build-time env `VITE_DEMO_SESSION_URL` | not live, or live with no configured URL → static "no live session" pill copy above; the pill is never rendered as a link with an empty `href` |
 | Demo recording | `VITE_DEMO_VIDEO_URL` | unset → static placeholder frame, exact copy above, fixed 960×540 box so layout never shifts when the real clip lands |
 | Email input | user | empty submit is blocked client-side (`required`, no request sent); no server round-trip for an obviously blank field |
-| GitHub link | build-time constant | hardcoded `https://github.com/<owner>/sesh` in footer; never sourced from an API so it cannot be undefined |
+| GitHub link | build-time constant | hardcoded `https://github.com/devanshchoudhary20/sesh-live` in footer; never sourced from an API so it cannot be undefined |
 
 ## Screen 2: Viewer, read-only PoC (`apps/viewer`)
+
+PM gate 3 fix (2026-09-25): the host now sends a `resize` control frame on connect (not only on SIGWINCH) and the relay hands a late joiner the last stored resize before backfill, so the terminal is sized before any content redraws into it; a `--name` flag on the host sends a `meta` frame delivered first, and the top bar now shows that name plus a sub-line; the viewer count freezes at its last value once the session ends instead of drifting toward 0.
 
 ### Happy path
 
@@ -98,7 +102,7 @@ Both apps import the same `src/tokens.css` (identical file, duplicated per app s
 ### States
 
 **Connecting** (WebSocket not yet open)
-- Top bar: live indicator shows a static gray dot, label `Connecting…`. Session name shows `Session` (generic, since the name isn't known until the relay's first message) if no `?name=` param was in the link, else the param's value.
+- Top bar: live indicator shows a static gray dot, label `Connecting…`. Session name shows `Session` (generic) until either the `?name=` query param (initial value) or the relay's `meta` frame (authoritative, arrives first over the socket) supplies one. Under the name, a sub-line reads `<name>, read-only stream`, or `Claude Code session, read-only stream` when no name is known yet.
 - Terminal area shows centered text `Connecting to the session…` on the theme's terminal background, no xterm instance mounted yet (avoids a flash of an empty black/white box before the real one).
 - Viewer count shows `— viewers`.
 
@@ -109,6 +113,7 @@ Both apps import the same `src/tokens.css` (identical file, duplicated per app s
 
 **Host ended** (relay closes the room, or sends an explicit end frame)
 - Live indicator: gray dot, label `Ended`.
+- Viewer count freezes at its last known value (PM gate 3 fix): the stats poll stops once `ended` is reached, so it never drops toward `0` as viewers close their tabs after the host is already gone.
 - Terminal keeps its last rendered frame, dimmed to 70% opacity via a CSS overlay, so the visitor can still read the last lines.
 - Banner above the terminal: `This session has ended. Replay isn't available yet — that's coming in a later milestone.` (exact M0 replay-not-available copy).
 - "Get the link for your own session" CTA is promoted from the top bar into the banner as a second line, in case the visitor missed the top bar.
@@ -129,7 +134,7 @@ Both apps import the same `src/tokens.css` (identical file, duplicated per app s
 |---|---|---|
 | Relay URL | query `?relay=` or fragment `#relay=` | missing/malformed → invalid link state, no connection attempted |
 | Room id | query `?room=` or fragment `#room=` | missing → invalid link state |
-| Session name | query `?name=` | absent → `Session` |
+| Session name | relay `meta` control frame (authoritative, sent first on join); query `?name=` is the initial value before it arrives | neither present → `Session` in the top bar, `Claude Code session, read-only stream` on the sub-line |
 | Viewer count | relay's periodic count message over the open socket | before first message: `— viewers` (connecting) or `1 viewer` (live, counting self); on disconnect, count freezes at its last value |
 | Live/ended state | WebSocket `open`/`close` events, an `invalid` or `ended` control frame, and the close code (`4404` for invalid, `1006` with no frames for connection error) | close code `4404` or an `invalid` frame → invalid link state; an `ended` frame, or any close reached after "live", → ended; close `1006` while still "connecting" (no frames ever received) → connection error state; invalid, ended, and connection error are all terminal — a later close event never overwrites them |
 | Terminal frames | WebSocket `message` events, raw bytes | none yet → connecting state's placeholder text, never an empty xterm canvas |

@@ -3,10 +3,13 @@ import {
   appendToRingBuffer,
   base64ToBuffer,
   bufferToBase64,
+  buildJoinFrames,
   closeAllViewers,
   corsHeaders,
   countLiveViewers,
+  createRateLimiter,
   ENDED_FRAME,
+  isControlFrame,
   isValidEmail,
   parseRoomPath,
   resolveRole,
@@ -119,6 +122,61 @@ describe("closeAllViewers", () => {
     closeAllViewers([broken, healthy]);
     expect(broken.close).toHaveBeenCalledWith(1000, "host ended");
     expect(healthy.close).toHaveBeenCalledWith(1000, "host ended");
+  });
+});
+
+describe("isControlFrame", () => {
+  it("matches a JSON control frame of the given type", () => {
+    expect(isControlFrame(JSON.stringify({ type: "resize", cols: 80, rows: 24 }), "resize")).toBe(true);
+    expect(isControlFrame(JSON.stringify({ type: "meta", name: "x" }), "meta")).toBe(true);
+  });
+
+  it("rejects a different type, binary data, or unparseable text", () => {
+    expect(isControlFrame(JSON.stringify({ type: "ended" }), "resize")).toBe(false);
+    expect(isControlFrame(new ArrayBuffer(4), "resize")).toBe(false);
+    expect(isControlFrame("not json", "resize")).toBe(false);
+  });
+});
+
+describe("buildJoinFrames", () => {
+  const backfill: FrameEntry[] = [{ binary: false, data: "hello", size: 5 }];
+
+  it("sends the last resize frame before backfill when no meta frame is stored", () => {
+    const resize = JSON.stringify({ type: "resize", cols: 120, rows: 40 });
+    expect(buildJoinFrames(null, resize, backfill)).toEqual([resize, ...backfill]);
+  });
+
+  it("leads with meta then resize, both ahead of backfill", () => {
+    const meta = JSON.stringify({ type: "meta", name: "Devansh's Claude Code" });
+    const resize = JSON.stringify({ type: "resize", cols: 120, rows: 40 });
+    expect(buildJoinFrames(meta, resize, backfill)).toEqual([meta, resize, ...backfill]);
+  });
+
+  it("falls back to backfill alone when neither control frame is stored", () => {
+    expect(buildJoinFrames(null, null, backfill)).toEqual(backfill);
+  });
+});
+
+describe("createRateLimiter", () => {
+  it("allows up to the limit within the window, then blocks", () => {
+    const limiter = createRateLimiter(5, 10 * 60 * 1000);
+    const now = 1_000_000;
+    for (let i = 0; i < 5; i++) expect(limiter.attempt("1.2.3.4", now)).toBe(true);
+    expect(limiter.attempt("1.2.3.4", now)).toBe(false);
+  });
+
+  it("tracks each key independently", () => {
+    const limiter = createRateLimiter(1, 1000);
+    expect(limiter.attempt("a", 0)).toBe(true);
+    expect(limiter.attempt("b", 0)).toBe(true);
+    expect(limiter.attempt("a", 0)).toBe(false);
+  });
+
+  it("allows again once the window has passed", () => {
+    const limiter = createRateLimiter(1, 1000);
+    expect(limiter.attempt("a", 0)).toBe(true);
+    expect(limiter.attempt("a", 500)).toBe(false);
+    expect(limiter.attempt("a", 1500)).toBe(true);
   });
 });
 

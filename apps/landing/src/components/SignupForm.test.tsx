@@ -15,7 +15,7 @@ afterEach(() => {
 describe("SignupForm", () => {
   it("idle: shows the default button label and the counter fallback", () => {
     render(<SignupForm count={null} onSuccess={() => {}} />)
-    expect(screen.getByRole("button")).toHaveTextContent("Get the link")
+    expect(screen.getByRole("button")).toHaveTextContent("Notify me")
     expect(screen.getByText("— signups so far")).toBeInTheDocument()
   })
 
@@ -45,7 +45,7 @@ describe("SignupForm", () => {
       expect(screen.getByText("Couldn't save that — check the address and try again.")).toBeInTheDocument(),
     )
     expect(screen.getByRole("button")).not.toBeDisabled()
-    expect(screen.getByRole("button")).toHaveTextContent("Get the link")
+    expect(screen.getByRole("button")).toHaveTextContent("Notify me")
   })
 
   it("success: clears the field, shows the confirmation label, and reports the server count", async () => {

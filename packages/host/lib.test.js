@@ -1,5 +1,13 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { createFrameBatcher, encodeEndedFrame, encodeResizeFrame, nextBackoffMs, waitForClose } from "./lib.js";
+import {
+  createFrameBatcher,
+  encodeEndedFrame,
+  encodeMetaFrame,
+  encodeResizeFrame,
+  nextBackoffMs,
+  parseHostArgs,
+  waitForClose,
+} from "./lib.js";
 
 describe("createFrameBatcher", () => {
   beforeEach(() => vi.useFakeTimers());
@@ -49,6 +57,37 @@ describe("control frame encoding", () => {
 
   it("encodes an ended frame as typed JSON", () => {
     expect(JSON.parse(encodeEndedFrame())).toEqual({ type: "ended" });
+  });
+
+  it("encodes a meta frame with the session name", () => {
+    expect(JSON.parse(encodeMetaFrame("Devansh's Claude Code"))).toEqual({
+      type: "meta",
+      name: "Devansh's Claude Code",
+    });
+  });
+});
+
+describe("parseHostArgs", () => {
+  it("pulls --room and --name out from anywhere in argv", () => {
+    expect(parseHostArgs(["--room", "abc123", "claude", "--name", "Devansh's Claude Code"])).toEqual({
+      room: "abc123",
+      name: "Devansh's Claude Code",
+      cmd: "claude",
+      cmdArgs: [],
+    });
+  });
+
+  it("defaults room and name to null when absent", () => {
+    expect(parseHostArgs(["claude"])).toEqual({ room: null, name: null, cmd: "claude", cmdArgs: [] });
+  });
+
+  it("keeps the agent command's own args intact", () => {
+    expect(parseHostArgs(["bash", "-c", "echo hi"])).toEqual({
+      room: null,
+      name: null,
+      cmd: "bash",
+      cmdArgs: ["-c", "echo hi"],
+    });
   });
 });
 

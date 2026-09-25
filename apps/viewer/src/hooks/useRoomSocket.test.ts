@@ -40,14 +40,15 @@ describe("connectRoomSocket", () => {
     }
     const onFrame = vi.fn()
     const onResize = vi.fn()
+    const onMeta = vi.fn()
 
-    const cleanupFirst = connectRoomSocket("ws://relay/r/room1", { onFrame, onResize, dispatch })
+    const cleanupFirst = connectRoomSocket("ws://relay/r/room1", { onFrame, onResize, onMeta, dispatch })
     const staleSocket = FakeWebSocket.instances[0]
     const staleOnClose = staleSocket.onclose // capture as if the event were already queued before cleanup runs
 
     cleanupFirst() // StrictMode's synchronous mount -> cleanup
 
-    const cleanupSecond = connectRoomSocket("ws://relay/r/room1", { onFrame, onResize, dispatch })
+    const cleanupSecond = connectRoomSocket("ws://relay/r/room1", { onFrame, onResize, onMeta, dispatch })
     const liveSocket = FakeWebSocket.instances[1]
 
     staleOnClose?.({ code: 1006 }) // the phantom socket's belated close
@@ -64,3 +65,23 @@ describe("connectRoomSocket", () => {
     expect(liveSocket.closedWithCode).toBe(1000)
   })
 })
+
+describe("connectRoomSocket meta frames", () => {
+  it("dispatches the host name from a meta control frame", () => {
+    // @ts-expect-error fake stands in for the DOM WebSocket in this node test environment
+    globalThis.WebSocket = FakeWebSocket
+
+    const dispatch = vi.fn()
+    const onFrame = vi.fn()
+    const onResize = vi.fn()
+    const onMeta = vi.fn()
+
+    connectRoomSocket("ws://relay/r/room1", { onFrame, onResize, onMeta, dispatch })
+    const socket = FakeWebSocket.instances[0]
+
+    socket.onmessage?.({ data: JSON.stringify({ type: "meta", name: "Devansh's Claude Code" }) })
+
+    expect(onMeta).toHaveBeenCalledWith("Devansh's Claude Code")
+  })
+})
+

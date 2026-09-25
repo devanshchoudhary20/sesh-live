@@ -2,12 +2,14 @@ import type { Env } from "./env";
 import {
   appendToRingBuffer,
   base64ToBuffer,
+  buildJoinFrames,
   bufferToBase64,
   closeAllViewers,
   countLiveViewers,
   ENDED_FRAME,
   INVALID_FRAME,
   INVALID_ROOM_CLOSE_CODE,
+  isControlFrame,
   resolveRole,
   roomExists,
   type FrameEntry,
@@ -15,9 +17,13 @@ import {
 
 const BACKFILL_LIMIT_BYTES = 64 * 1024;
 const BACKFILL_KEY = "backfill";
+const RESIZE_KEY = "resize";
+const META_KEY = "meta";
 const HOST_TOKEN_KEY = "hostToken";
 const ENDED_KEY = "ended";
 const VIEWER_KEY_PREFIX = "viewer:";
+// aggregate metric cap: a single IP joining the same room over and over should not inflate the "distinct viewers" count
+const MAX_VIEWER_TOKENS_PER_IP = 3;
 
 // One Durable Object per room, on the hibernation API so an idle room costs nothing between frames.
 export class Room implements DurableObject {
@@ -38,27 +44,31 @@ export class Room implements DurableObject {
     }
 
     const role = resolveRole(url);
-    return role === "host" ? this.acceptHost(url) : this.acceptViewer(url);
+    const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+    return role === "host" ? this.acceptHost(url) : this.acceptViewer(url, ip);
   }
 
   private async acceptHost(url: URL): Promise<Response> {
     const token = url.searchParams.get("token");
     if (!token) return new Response("missing host token", { status: 400 });
 
+    // token match is only enforced while a host socket is live, so a restarted host can reclaim a pinned SESH_ROOM
+    const hostSocketLive = this.state.getWebSockets("host").length > 0;
     const storedToken = await this.state.storage.get<string>(HOST_TOKEN_KEY);
-    if (storedToken && storedToken !== token) {
+    if (storedToken && storedToken !== token && hostSocketLive) {
       return new Response("host token does not match this room", { status: 403 });
     }
-    if (!storedToken) await this.state.storage.put(HOST_TOKEN_KEY, token);
+    if (storedToken !== token) await this.state.storage.put(HOST_TOKEN_KEY, token);
 
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
     this.state.acceptWebSocket(server, ["host"]);
+    await this.state.storage.delete(ENDED_KEY);
     await this.setLive(true);
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  private async acceptViewer(url: URL): Promise<Response> {
+  private async acceptViewer(url: URL, ip: string): Promise<Response> {
     const created = await this.state.storage.get(HOST_TOKEN_KEY);
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
@@ -74,8 +84,8 @@ export class Room implements DurableObject {
     const viewerToken = url.searchParams.get("v") || crypto.randomUUID();
     this.state.acceptWebSocket(server, ["viewer"]);
 
-    await this.recordViewer(viewerToken);
-    await this.sendBackfill(server);
+    await this.recordViewer(viewerToken, ip);
+    await this.sendJoinFrames(server);
 
     // a late joiner on an already-ended room should see "ended" immediately, not hang in "connecting"
     const ended = await this.state.storage.get(ENDED_KEY);
@@ -90,6 +100,8 @@ export class Room implements DurableObject {
   // Host frames fan out to every connected viewer; viewer messages are ignored (read-only at M0).
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
     if (!this.state.getTags(ws).includes("host")) return;
+    if (isControlFrame(message, "resize")) await this.state.storage.put(RESIZE_KEY, message as string);
+    if (isControlFrame(message, "meta")) await this.state.storage.put(META_KEY, message as string);
     await this.appendBackfill(message);
     this.broadcast(message);
   }
@@ -124,15 +136,20 @@ export class Room implements DurableObject {
     }
   }
 
-  private async recordViewer(token: string): Promise<void> {
+  private async recordViewer(token: string, ip: string): Promise<void> {
     const key = `${VIEWER_KEY_PREFIX}${token}`;
     const alreadySeen = await this.state.storage.get(key);
     if (alreadySeen) return;
     await this.state.storage.put(key, true);
 
     const roomId = this.state.id.toString();
-    await this.env.DB.prepare("INSERT OR IGNORE INTO joins (token, room, first_seen) VALUES (?, ?, ?)")
-      .bind(token, roomId, new Date().toISOString())
+    const { results } = await this.env.DB.prepare("SELECT COUNT(*) as count FROM joins WHERE room = ? AND ip = ?")
+      .bind(roomId, ip)
+      .all<{ count: number }>();
+    if ((results?.[0]?.count ?? 0) >= MAX_VIEWER_TOKENS_PER_IP) return;
+
+    await this.env.DB.prepare("INSERT OR IGNORE INTO joins (token, room, ip, first_seen) VALUES (?, ?, ?, ?)")
+      .bind(token, roomId, ip, new Date().toISOString())
       .run();
   }
 
@@ -146,10 +163,13 @@ export class Room implements DurableObject {
     await this.state.storage.put(BACKFILL_KEY, appendToRingBuffer(current, entry, BACKFILL_LIMIT_BYTES));
   }
 
-  private async sendBackfill(ws: WebSocket): Promise<void> {
-    const frames = (await this.state.storage.get<FrameEntry[]>(BACKFILL_KEY)) ?? [];
-    for (const frame of frames) {
-      ws.send(frame.binary ? base64ToBuffer(frame.data) : frame.data);
+  // Meta and resize (if the relay has them) always lead the backfill, so a late joiner's terminal is named and sized first.
+  private async sendJoinFrames(ws: WebSocket): Promise<void> {
+    const meta = (await this.state.storage.get<string>(META_KEY)) ?? null;
+    const resize = (await this.state.storage.get<string>(RESIZE_KEY)) ?? null;
+    const backfill = (await this.state.storage.get<FrameEntry[]>(BACKFILL_KEY)) ?? [];
+    for (const frame of buildJoinFrames(meta, resize, backfill)) {
+      ws.send(typeof frame === "string" ? frame : frame.binary ? base64ToBuffer(frame.data) : frame.data);
     }
   }
 

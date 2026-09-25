@@ -30,6 +30,28 @@ export function encodeEndedFrame() {
   return JSON.stringify({ type: "ended" });
 }
 
+export function encodeMetaFrame(name) {
+  return JSON.stringify({ type: "meta", name });
+}
+
+// Pulls --room and --name out of argv wherever they sit, leaving the agent command and its own args untouched.
+export function parseHostArgs(argv) {
+  const rest = [];
+  let room = null;
+  let name = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--room") {
+      room = argv[++i] ?? null;
+    } else if (argv[i] === "--name") {
+      name = argv[++i] ?? null;
+    } else {
+      rest.push(argv[i]);
+    }
+  }
+  const [cmd, ...cmdArgs] = rest;
+  return { room, name, cmd, cmdArgs };
+}
+
 // Exponential backoff capped at 5s, resetting after a successful connection.
 export function nextBackoffMs(attempt) {
   return Math.min(500 * 2 ** attempt, 5000);

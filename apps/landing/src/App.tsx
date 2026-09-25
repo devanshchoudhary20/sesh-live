@@ -2,7 +2,6 @@ import { useTheme } from "./hooks/useTheme"
 import { useSignupCount } from "./hooks/useSignupCount"
 import { Hero } from "./components/Hero"
 import { SignupForm } from "./components/SignupForm"
-import { LiveSessionLink } from "./components/LiveSessionLink"
 import { Footer } from "./components/Footer"
 import "./App.css"
 
@@ -21,7 +20,6 @@ function App() {
       <main>
         <Hero />
         <SignupForm count={count} onSuccess={setCount} />
-        <LiveSessionLink />
       </main>
       <Footer />
     </div>

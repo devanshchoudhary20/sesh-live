@@ -1,18 +1,28 @@
 import type { Env } from "./env";
-import { corsHeaders, isValidEmail, parseRoomPath } from "./routing";
+import { corsHeaders, createRateLimiter, isValidEmail, parseRoomPath } from "./routing";
 
 export { Room } from "./room";
 export type { Env };
 
+// dev fallback matches the landing app's Vite default port; SHIP sets ALLOWED_ORIGIN to the deployed Pages origin
+const DEV_ORIGIN_FALLBACK = "http://localhost:5173";
+// module-scope so it survives across requests within one Worker isolate; good enough for M0 hygiene, not a hard cap
+const signupLimiter = createRateLimiter(5, 10 * 60 * 1000);
+
 function withCors(response: Response, request: Request, env: Env): Response {
-  const headers = corsHeaders(request.headers.get("Origin"), env.ALLOWED_ORIGIN ?? "*");
+  const headers = corsHeaders(request.headers.get("Origin"), env.ALLOWED_ORIGIN ?? DEV_ORIGIN_FALLBACK);
   const merged = new Headers(response.headers);
   for (const [key, value] of Object.entries(headers)) merged.set(key, value);
   return new Response(response.body, { status: response.status, headers: merged });
 }
 
-// POST /signup: dedupes by email (INSERT OR IGNORE), always returns the current total count.
+// POST /signup: rate-limited per IP, dedupes by email (INSERT OR IGNORE), always returns the current total count.
 async function handleSignup(request: Request, env: Env): Promise<Response> {
+  const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+  if (!signupLimiter.attempt(ip, Date.now())) {
+    return Response.json({ error: "too many signups from this address, try again later" }, { status: 429 });
+  }
+
   const body = (await request.json().catch(() => null)) as { email?: string } | null;
   const email = body?.email?.trim();
   if (!isValidEmail(email)) {

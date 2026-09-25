@@ -230,4 +230,6 @@ TypeScript CLI (`node-pty` prebuilt, `ws`, `@xterm/headless` + `@xterm/addon-ser
 
 ## Friend sentence
 
-"Run `npx sesh claude` instead of `claude`, send me the link, and I can watch your session and grab the keyboard when it goes sideways. It never leaves your laptop."
+PM gate 3 fix (2026-09-25): `sesh` was taken on npm, so the command is `npx sesh-live`. The old wording overstated "never leaves your laptop" (the agent process does; the terminal bytes travel through the relay in plaintext at M0, E2E is not built yet), so the sentence now says exactly what M0 ships.
+
+"Run `npx sesh-live claude` instead of `claude`, send me the link, and I can watch your session live. The agent runs on your laptop; the terminal stream goes through a relay, end-to-end encryption is next."

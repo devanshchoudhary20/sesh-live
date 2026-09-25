@@ -2,9 +2,9 @@ name = "sesh-relay"
 main = "src/index.ts"
 compatibility_date = "2026-09-25"
 
-# placeholder until SHIP wires the real Pages origin; "*" is fine for M0 dev/demo
+# placeholder until SHIP wires the real deployed Pages origin; matches the landing app's local Vite port for dev
 [vars]
-ALLOWED_ORIGIN = "*"
+ALLOWED_ORIGIN = "http://localhost:5173"
 
 [[durable_objects.bindings]]
 name = "ROOM"
@@ -14,6 +14,9 @@ class_name = "Room"
 tag = "v1"
 new_classes = ["Room"]
 
+# REPLACE_WITH_D1_ID is a placeholder, not a live database. Create the real one with:
+#   wrangler d1 create sesh-signups
+# then paste the returned database_id below. See README.md for the full setup. Not created by this fix pass.
 [[d1_databases]]
 binding = "DB"
 database_name = "sesh-signups"

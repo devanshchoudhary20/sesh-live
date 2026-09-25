@@ -129,13 +129,23 @@
   color: var(--neutral-400);
 }
 
-.live-link {
-  margin-top: var(--space-5);
-  font-size: 0.95rem;
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-4) 0 0;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--neutral-400);
+  text-decoration: none;
 }
 
-.live-link a {
+.live-pill-active {
+  border-color: var(--accent-500);
   color: var(--accent-600);
+  font-weight: 600;
 }
 
 .footer {

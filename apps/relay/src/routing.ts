@@ -82,6 +82,43 @@ export function closeAllViewers(viewers: Iterable<ClosableSocket>): void {
   }
 }
 
+// A host control frame is small JSON text; anything binary or unparseable is PTY output, never a control frame.
+export function isControlFrame(message: string | ArrayBuffer, type: string): boolean {
+  if (typeof message !== "string") return false
+  try {
+    return JSON.parse(message)?.type === type
+  } catch {
+    return false
+  }
+}
+
+// A late joiner needs the host's name and terminal size before any backfilled content redraws into an unsized terminal.
+export function buildJoinFrames(meta: string | null, resize: string | null, backfill: FrameEntry[]): (string | FrameEntry)[] {
+  const leading = [meta, resize].filter((frame): frame is string => Boolean(frame))
+  return [...leading, ...backfill]
+}
+
+export interface RateLimiter {
+  attempt(key: string, now: number): boolean
+}
+
+// Fixed-window counter per key; an in-memory Map is acceptable for M0 (no KV/DO round trip for a signup gate this cheap).
+export function createRateLimiter(limit: number, windowMs: number): RateLimiter {
+  const hits = new Map<string, number[]>()
+  return {
+    attempt(key: string, now: number): boolean {
+      const timestamps = (hits.get(key) ?? []).filter((t) => now - t < windowMs)
+      if (timestamps.length >= limit) {
+        hits.set(key, timestamps)
+        return false
+      }
+      timestamps.push(now)
+      hits.set(key, timestamps)
+      return true
+    },
+  }
+}
+
 export function isValidEmail(email: string | undefined | null): email is string {
   if (!email) return false;
   const trimmed = email.trim();

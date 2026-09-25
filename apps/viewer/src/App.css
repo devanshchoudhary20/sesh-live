@@ -14,9 +14,20 @@
   font-size: 0.9rem;
 }
 
+.name-block {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
 .session-name {
   font-weight: 500;
   color: var(--fg-strong);
+}
+
+.session-sub {
+  font-size: 0.75rem;
+  color: var(--neutral-400);
 }
 
 .indicator {
@@ -83,6 +94,12 @@
 
 .terminal-mount {
   flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.terminal-scale {
+  transform-origin: top left;
 }
 
 .terminal-area-dimmed {

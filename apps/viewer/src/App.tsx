@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react"
+import { useCallback, useRef, useState } from "react"
 import { useTheme } from "./hooks/useTheme"
 import { useSessionLink } from "./hooks/useSessionLink"
 import { useRoomSocket } from "./hooks/useRoomSocket"
@@ -6,6 +6,7 @@ import { Terminal, type TerminalHandle } from "./components/Terminal"
 import "./App.css"
 
 const LANDING_URL = import.meta.env.VITE_LANDING_URL ?? "/"
+const NO_NAME_SUB_COPY = "Claude Code session, read-only stream"
 
 function indicatorCopy(state: "connecting" | "live" | "ended") {
   if (state === "live") return { label: "Live", tone: "live" as const }
@@ -33,13 +34,23 @@ function viewerCountCopy(state: string, count: number | null) {
   return count === 1 ? "1 viewer" : `${count} viewers`
 }
 
+function sessionNameCopy(name: string | null) {
+  return name || "Session"
+}
+
+function sessionSubCopy(name: string | null) {
+  return name ? `${name}, read-only stream` : NO_NAME_SUB_COPY
+}
+
 function App() {
   const { theme, toggle } = useTheme()
-  const { roomId, name, valid } = useSessionLink()
+  const { roomId, name: urlName, valid } = useSessionLink()
+  const [hostName, setHostName] = useState<string | null>(urlName)
   const terminalRef = useRef<TerminalHandle>(null)
   const handleFrame = useCallback((data: Uint8Array) => terminalRef.current?.write(data), [])
   const handleResize = useCallback((cols: number, rows: number) => terminalRef.current?.resize(cols, rows), [])
-  const { state, viewerCount } = useRoomSocket(valid ? roomId : null, handleFrame, handleResize)
+  const handleMeta = useCallback((name: string) => setHostName(name), [])
+  const { state, viewerCount } = useRoomSocket(valid ? roomId : null, handleFrame, handleResize, handleMeta)
 
   if (!valid || state === "invalid" || state === "connection-error") {
     const card = terminalCardCopy(!valid || state === "invalid" ? "invalid" : "connection-error")
@@ -57,7 +68,10 @@ function App() {
   return (
     <div className="viewer-page">
       <header className="top-bar">
-        <span className="session-name">{name}</span>
+        <span className="name-block">
+          <span className="session-name">{sessionNameCopy(hostName)}</span>
+          <span className="session-sub">{sessionSubCopy(hostName)}</span>
+        </span>
         <span className={`indicator indicator-${indicator.tone}`}>
           <span className="dot" />
           {indicator.label}

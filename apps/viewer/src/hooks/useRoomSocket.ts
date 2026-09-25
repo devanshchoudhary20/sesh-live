@@ -5,21 +5,28 @@ import { useViewerToken } from "./useViewerToken"
 
 export type { ConnectionState }
 
-type ControlFrame = { type: "resize"; cols: number; rows: number } | { type: "ended" } | { type: "invalid" } | null
+type ControlFrame =
+  | { type: "resize"; cols: number; rows: number }
+  | { type: "meta"; name: string }
+  | { type: "ended" }
+  | { type: "invalid" }
+  | null
 
 type SocketHandlers = {
   onFrame: (data: Uint8Array) => void
   onResize: (cols: number, rows: number) => void
+  onMeta: (name: string) => void
   dispatch: (event: SocketEvent) => void
 }
 
 const STATS_POLL_MS = 10_000
 
-// Terminal bytes travel as binary frames; resize/ended/invalid control messages travel as JSON text, so they never collide.
+// Terminal bytes travel as binary frames; resize/meta/ended/invalid control messages travel as JSON text, so they never collide.
 function parseControlFrame(raw: string): ControlFrame {
   try {
     const parsed = JSON.parse(raw)
     if (parsed?.type === "resize" && typeof parsed.cols === "number" && typeof parsed.rows === "number") return parsed
+    if (parsed?.type === "meta" && typeof parsed.name === "string") return parsed
     if (parsed?.type === "ended") return { type: "ended" }
     if (parsed?.type === "invalid") return { type: "invalid" }
     return null
@@ -43,6 +50,7 @@ export function connectRoomSocket(url: string, handlers: SocketHandlers): () => 
     if (typeof event.data === "string") {
       const frame = parseControlFrame(event.data)
       if (frame?.type === "resize") handlers.onResize(frame.cols, frame.rows)
+      if (frame?.type === "meta") handlers.onMeta(frame.name)
       if (frame?.type === "ended" || frame?.type === "invalid") {
         handlers.dispatch({ type: "control-frame", frame: frame.type })
       }
@@ -69,6 +77,7 @@ export function useRoomSocket(
   roomId: string | null,
   onFrame: (data: Uint8Array) => void,
   onResize: (cols: number, rows: number) => void,
+  onMeta: (name: string) => void,
 ) {
   const viewerToken = useViewerToken()
   const [state, setState] = useState<ConnectionState>(roomId ? "connecting" : "invalid")
@@ -77,11 +86,17 @@ export function useRoomSocket(
   useEffect(() => {
     if (!roomId) return
     const dispatch = (event: SocketEvent) => setState((current) => reduceConnectionState(current, event))
-    return connectRoomSocket(`${RELAY_WS_URL}/r/${roomId}?role=viewer&v=${viewerToken}`, { onFrame, onResize, dispatch })
-  }, [roomId, viewerToken, onFrame, onResize])
+    return connectRoomSocket(`${RELAY_WS_URL}/r/${roomId}?role=viewer&v=${viewerToken}`, {
+      onFrame,
+      onResize,
+      onMeta,
+      dispatch,
+    })
+  }, [roomId, viewerToken, onFrame, onResize, onMeta])
 
   useEffect(() => {
-    if (!roomId || state === "invalid" || state === "connection-error") return
+    // ended is terminal too: once the host is gone the last poll result is the final viewer count, not a fresh "0"
+    if (!roomId || state === "invalid" || state === "connection-error" || state === "ended") return
     let cancelled = false
 
     const poll = () => {

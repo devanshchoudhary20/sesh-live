@@ -45,7 +45,7 @@ export function SignupForm({ count, onSuccess }: SignupFormProps) {
     }
   }
 
-  const buttonLabel = status === "pending" ? "Sending…" : status === "success" ? "You're in" : "Get the link"
+  const buttonLabel = status === "pending" ? "Sending…" : status === "success" ? "You're in" : "Notify me"
   const buttonDisabled = status === "pending" || status === "success"
 
   return (
