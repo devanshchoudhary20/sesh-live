@@ -7,6 +7,8 @@
   --neutral-950: #161409;
   --accent-500: #f0a020;
   --accent-600: #d3870c;
+  /* accent-600 is a background fill (button hover); text usages need this darker amber to clear 4.5:1 on light */
+  --accent-700: #8a5200;
   --error-500: #c6362b;
   /* fixed near-black regardless of theme, since accent-500's fill doesn't flip and neutral-950 does */
   --on-accent: #14110a;
@@ -40,6 +42,8 @@
   --neutral-950: #f5f2ea;
   --accent-500: #f0a020;
   --accent-600: #ffb84d;
+  /* unchanged from accent-600: dark theme already passed contrast, this token just splits the fill/text roles */
+  --accent-700: #ffb84d;
 
   --bg: var(--neutral-50);
   --fg: var(--neutral-700);

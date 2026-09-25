@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react"
-import { RELAY_ORIGIN, STATS_POLL_MS } from "../config"
+import { DEMO_SESSION_URL, RELAY_ORIGIN, STATS_POLL_MS } from "../config"
+import { extractDemoRoomId } from "../lib/demoRoom"
+
+// the pinned demo room's own viewer count is concurrent (open sockets); the aggregate is distinct tokens ever seen
+const demoRoomId = extractDemoRoomId(DEMO_SESSION_URL)
+const statsUrl = demoRoomId ? `${RELAY_ORIGIN}/r/${demoRoomId}/stats` : `${RELAY_ORIGIN}/stats`
 
 // polling cadence mirrors apps/viewer's useRoomSocket stats poll (STATS_POLL_MS), same shape of problem
 export function useLiveSession() {
@@ -10,7 +15,7 @@ export function useLiveSession() {
     let cancelled = false
 
     const poll = () => {
-      fetch(`${RELAY_ORIGIN}/stats`)
+      fetch(statsUrl)
         .then((res) => (res.ok ? res.json() : null))
         .then((data: { live?: boolean; viewers?: number } | null) => {
           if (cancelled) return

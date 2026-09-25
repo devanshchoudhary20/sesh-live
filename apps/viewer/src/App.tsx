@@ -1,8 +1,9 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useState } from "react"
 import { useTheme } from "./hooks/useTheme"
 import { useSessionLink } from "./hooks/useSessionLink"
 import { useRoomSocket } from "./hooks/useRoomSocket"
-import { Terminal, type TerminalHandle } from "./components/Terminal"
+import { Terminal } from "./components/Terminal"
+import { createTerminalController } from "./lib/terminalController"
 import "./App.css"
 
 const LANDING_URL = import.meta.env.VITE_LANDING_URL ?? "/"
@@ -46,9 +47,10 @@ function App() {
   const { theme, toggle } = useTheme()
   const { roomId, name: urlName, valid } = useSessionLink()
   const [hostName, setHostName] = useState<string | null>(urlName)
-  const terminalRef = useRef<TerminalHandle>(null)
-  const handleFrame = useCallback((data: Uint8Array) => terminalRef.current?.write(data), [])
-  const handleResize = useCallback((cols: number, rows: number) => terminalRef.current?.resize(cols, rows), [])
+  // stable regardless of <Terminal> mount timing, so a late joiner's join-frame burst queues instead of dropping
+  const [controller] = useState(() => createTerminalController())
+  const handleFrame = useCallback((data: Uint8Array) => controller.write(data), [controller])
+  const handleResize = useCallback((cols: number, rows: number) => controller.resize(cols, rows), [controller])
   const handleMeta = useCallback((name: string) => setHostName(name), [])
   const { state, viewerCount } = useRoomSocket(valid ? roomId : null, handleFrame, handleResize, handleMeta)
 
@@ -94,7 +96,7 @@ function App() {
         {state === "connecting" ? (
           <p className="connecting-text">Connecting to the session…</p>
         ) : (
-          <Terminal ref={terminalRef} theme={theme} />
+          <Terminal theme={theme} controller={controller} />
         )}
       </main>
     </div>
