@@ -49,6 +49,20 @@
   display: block;
 }
 
+.recording-placeholder {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-4);
+  color: var(--fg-strong);
+  font-size: 0.95rem;
+}
+
 .code-block {
   display: flex;
   align-items: center;
@@ -115,6 +129,12 @@
 .signup-form button:disabled {
   opacity: 0.7;
   cursor: default;
+}
+
+.signup-hint {
+  color: var(--neutral-400);
+  margin-top: var(--space-2);
+  font-size: 0.8rem;
 }
 
 .error-text {

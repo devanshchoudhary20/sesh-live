@@ -130,11 +130,20 @@ export function isValidEmail(email: string | undefined | null): email is string 
   return trimmed.length >= 3 && trimmed.includes("@") && !trimmed.includes(" ");
 }
 
-// allowedOrigin "*" allows every caller; otherwise only the request's own origin, if it matches, is echoed back.
-export function corsHeaders(origin: string | null, allowedOrigin: string): Record<string, string> {
-  const allowOrigin = allowedOrigin === "*" ? "*" : origin === allowedOrigin ? allowedOrigin : "";
+// allowedOrigins is the comma-separated ALLOWED_ORIGINS var ("*" is an explicit dev-only wildcard); a non-match gets no CORS headers at all.
+export function corsHeaders(origin: string | null, allowedOrigins: string): Record<string, string> {
+  const allowList = allowedOrigins.split(",").map((entry) => entry.trim()).filter(Boolean);
+  if (allowList.includes("*")) {
+    return {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+      Vary: "Origin",
+    };
+  }
+  if (!origin || !allowList.includes(origin)) return {};
   return {
-    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     Vary: "Origin",

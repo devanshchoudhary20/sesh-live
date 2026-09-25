@@ -1,14 +1,31 @@
 {
   "name": "sesh-live",
-  "private": true,
   "version": "0.1.0",
   "type": "module",
+  "description": "PTY wrapper that streams an agent CLI session (Claude Code, Codex) to a relay so someone else can watch it live in a browser.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devanshchoudhary20/sesh-live.git"
+  },
+  "homepage": "https://github.com/devanshchoudhary20/sesh-live",
+  "keywords": [
+    "cli",
+    "terminal",
+    "pty",
+    "agent",
+    "claude-code",
+    "codex",
+    "pair-programming",
+    "live-stream"
+  ],
   "bin": {
     "sesh-live": "./index.js"
   },
   "files": [
     "index.js",
     "lib.js",
+    "config.js",
     "README.md"
   ],
   "engines": {

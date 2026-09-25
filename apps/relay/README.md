@@ -18,7 +18,7 @@ npm run db:init
 
 ## Env vars
 
-- `ALLOWED_ORIGIN`: the deployed Pages origin for CORS. Defaults to `http://localhost:5173` (the landing app's local Vite port) when unset, so local dev works with no config.
+- `ALLOWED_ORIGINS`: comma-separated deployed origins for CORS (e.g. the Pages landing origin and the viewer origin). `*` is an explicit dev-only wildcard entry. Defaults to `http://localhost:5173` (the landing app's local Vite port) when unset, so local dev works with no config.
 
 ## Scripts
 

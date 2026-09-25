@@ -62,6 +62,7 @@ export function SignupForm({ count, onSuccess }: SignupFormProps) {
           {buttonLabel}
         </button>
       </form>
+      <p className="signup-hint">Used once, to send you the link when it's ready. No newsletter.</p>
       {status === "error" && (
         <p className="error-text">Couldn't save that — check the address and try again.</p>
       )}

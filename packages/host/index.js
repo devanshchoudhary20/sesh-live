@@ -12,6 +12,7 @@ import {
   parseHostArgs,
   waitForClose,
 } from "./lib.js";
+import { RELAY_ORIGIN, VIEWER_ORIGIN } from "./config.js";
 
 const { room, name, cmd, cmdArgs: args } = parseHostArgs(process.argv.slice(2));
 if (!cmd) {
@@ -19,9 +20,9 @@ if (!cmd) {
   process.exit(1);
 }
 
-// placeholders until SHIP fills in the real deployed relay/viewer origins
-const relayOrigin = process.env.SESH_RELAY ?? "wss://sesh-relay.example.workers.dev";
-const viewerOrigin = process.env.SESH_VIEWER ?? "https://sesh.example.dev";
+// SHIP writes config.js with the real deployed origins before publish; env vars still win for local dev against a different relay
+const relayOrigin = process.env.SESH_RELAY ?? RELAY_ORIGIN;
+const viewerOrigin = process.env.SESH_VIEWER ?? VIEWER_ORIGIN;
 
 // SESH_ROOM/--room pin the room id so the printed link survives a host restart; a flag wins over the env var.
 const roomId = room ?? process.env.SESH_ROOM ?? randomUUID();

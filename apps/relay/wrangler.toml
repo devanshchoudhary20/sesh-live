@@ -2,9 +2,9 @@ name = "sesh-relay"
 main = "src/index.ts"
 compatibility_date = "2026-09-25"
 
-# placeholder until SHIP wires the real deployed Pages origin; matches the landing app's local Vite port for dev
+# placeholder until SHIP wires the real deployed Pages + viewer origins; comma-separated, "*" is an explicit dev-only wildcard entry
 [vars]
-ALLOWED_ORIGIN = "http://localhost:5173"
+ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:4173"
 
 [[durable_objects.bindings]]
 name = "ROOM"

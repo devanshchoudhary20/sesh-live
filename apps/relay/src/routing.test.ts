@@ -196,8 +196,15 @@ describe("corsHeaders", () => {
     expect(corsHeaders("https://sesh.dev", "*")["Access-Control-Allow-Origin"]).toBe("*");
   });
 
-  it("echoes the request origin only when it matches the allowlist", () => {
+  it("echoes the request origin only when it matches a single-origin allowlist", () => {
     expect(corsHeaders("https://sesh.dev", "https://sesh.dev")["Access-Control-Allow-Origin"]).toBe("https://sesh.dev");
-    expect(corsHeaders("https://evil.dev", "https://sesh.dev")["Access-Control-Allow-Origin"]).toBe("");
+    expect(corsHeaders("https://evil.dev", "https://sesh.dev")).toEqual({});
+  });
+
+  it("echoes whichever of two comma-separated origins made the request, and drops CORS headers for a third", () => {
+    const allowlist = "https://sesh.dev,https://viewer.sesh.dev";
+    expect(corsHeaders("https://sesh.dev", allowlist)["Access-Control-Allow-Origin"]).toBe("https://sesh.dev");
+    expect(corsHeaders("https://viewer.sesh.dev", allowlist)["Access-Control-Allow-Origin"]).toBe("https://viewer.sesh.dev");
+    expect(corsHeaders("https://evil.dev", allowlist)).toEqual({});
   });
 });

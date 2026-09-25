@@ -87,7 +87,9 @@ function App() {
 
       {state === "ended" && (
         <div className="ended-banner">
-          This session has ended. Replay isn't available yet — that's coming in a later milestone.
+          This session has ended. Replays are not available yet.
+          <span>If the host restarted, reload to reconnect.</span>
+          <button type="button" className="reload-button" onClick={() => location.reload()}>Reload</button>
           <a href={LANDING_URL}>Get the link for your own session</a>
         </div>
       )}

@@ -4,13 +4,13 @@ import { corsHeaders, createRateLimiter, isValidEmail, parseRoomPath } from "./r
 export { Room } from "./room";
 export type { Env };
 
-// dev fallback matches the landing app's Vite default port; SHIP sets ALLOWED_ORIGIN to the deployed Pages origin
+// dev fallback matches the landing app's Vite default port; SHIP sets ALLOWED_ORIGINS to the deployed Pages + viewer origins
 const DEV_ORIGIN_FALLBACK = "http://localhost:5173";
 // module-scope so it survives across requests within one Worker isolate; good enough for M0 hygiene, not a hard cap
 const signupLimiter = createRateLimiter(5, 10 * 60 * 1000);
 
 function withCors(response: Response, request: Request, env: Env): Response {
-  const headers = corsHeaders(request.headers.get("Origin"), env.ALLOWED_ORIGIN ?? DEV_ORIGIN_FALLBACK);
+  const headers = corsHeaders(request.headers.get("Origin"), env.ALLOWED_ORIGINS ?? DEV_ORIGIN_FALLBACK);
   const merged = new Headers(response.headers);
   for (const [key, value] of Object.entries(headers)) merged.set(key, value);
   return new Response(response.body, { status: response.status, headers: merged });
